@@ -22,7 +22,10 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
+    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"), 
+    defineParameter("hiRisk1", "numeric", 0.5, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
+    defineParameter("hiRisk2", "numeric", 10.0, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
+    defineParameter("mapHiRisk", "logical", TRUE, NA, NA, "Logical of whether to map hiRisk")
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
@@ -30,7 +33,8 @@ defineModule(sim, list(
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
-    createsOutput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk created by combining layers in riskList")
+    createsOutput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk created by combining layers in riskList"),
+    createsOutput(objectName = "highRisk", objectClass = "RasterLayer", desc = "Raster made by reclassifying totalRisk. Will be empty if mapHiRisk == FALSE")
   )
 ))
 
@@ -43,9 +47,6 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
     init = {
       ### check for more detailed object dependencies:
       ### (use `checkObject` or similar)
-      
-      # do stuff for this event
-      sim <- combineRiskInit(sim)
       
       # schedule future event(s)
       sim <- scheduleEvent(sim, start(sim), "combineRisk", "checkinputs")
@@ -70,7 +71,11 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
     combine = {
       # do stuff for this event
       sim <- combineRiskCombine(sim)
-      
+      if(P(sim)$mapHiRisk == FALSE){
+        sim$highRisk <- NULL
+      }else{
+        sim <- makeHighRisk(sim)
+      }
       # schedule future event(s)
          # schedule first 'plot' event
       if(is.na(P(sim)$.plotInitialTime)) {
@@ -94,11 +99,6 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
 ## Event Functions ##
 
 ### init event:
-combineRiskInit <- function(sim) {
-  
-  return(invisible(sim))
-}
-
 
 ### plot event:
 combineRiskPlot <- function(sim) {
@@ -126,6 +126,16 @@ combineRiskCombine <- function(sim) {
   sim$totalRisk <- totalRisk
   
   return(invisible(sim))
+  }
+
+makeHighRisk <- function(sim){
+  highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0, P(sim)$hiRisk1, NA,
+                                                         P(sim)$hiRisk1, P(sim)$hiRisk2, 1 ,
+                                                         P(sim)$hiRisk2, max(values(sim$totalRisk)), 2  ), 
+                                                       ncol=3, byrow=T), 
+                                 include.lowest=TRUE)
+  sim$highRisk <- highRisk
+return(sim)
 }
 
 

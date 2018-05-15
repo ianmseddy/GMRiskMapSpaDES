@@ -116,7 +116,8 @@ selectROIPlot <- function(sim) {
     roiGoogle <- sp::spTransform(sim$roi, raster::crs("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
     zoomLevel <- ggmap::calc_zoom(c(xmin(roiGoogle), xmax(roiGoogle)), c(ymin(roiGoogle), ymax(roiGoogle)))
     roiGoogleMap <- dismo::gmap(x = extent(roiGoogle), type = "satellite", lonlat=TRUE, zoom=zoomLevel-1)
-    Plot(roiGoogleMap, legend = FALSE, title="Region of Interest")
+    
+    Plot(roiGoogleMap, legend = FALSE, title="")
     Plot(roiGoogle, addTo="roiGoogleMap", cols="white")
     
   }

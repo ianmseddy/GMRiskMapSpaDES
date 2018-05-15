@@ -18,7 +18,7 @@ objects <- list(roi = "LowerMainland") # predefined roi character string
 #objects <- list() # no roi - select on map
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
-                "selectROI", "calculateRisk","combineRisk", "leafletRiskMap","trapsReportPDF")  # ,"loadLcc2015",  "lccToTreeCover")
+                "selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF")  # ,"loadLcc2015",  "lccToTreeCover", )
 parameters <- list(selectROI = list(.plotInitialTime = 1),
                    loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
@@ -29,17 +29,18 @@ parameters <- list(selectROI = list(.plotInitialTime = 1),
                    lccToTreeCover = list(.plotInitialTime = 1),
                    calculateRisk = list(species = "GypsyMoth",
                                         .plotInitialTime = 1),
-                   combineRisk = list(.plotInitialTime = 1),
+                   combineRisk = list(.plotInitialTime = 1, 
+                                      hiRisk1 = 0.85,
+                                      hiRisk2 = 10, 
+                                      mapHiRisk = TRUE),
                    leafletRiskMap = list(basemap = "satellite",
                                          mapRisk = TRUE,
                                          mapHiRisk = TRUE,
-                                         hiRisk1 = 0.85,
-                                         hiRisk2 = 10,
                                          dataLayers = list("traps"),
                                          #riskLayers = list("trapsRisk"),
                                          .plotInitialTime = 1),
                    trapsReportPDF = list(dataName = "traps",
-                                         fileName = "trapsReportTest",
+                                         fileName = "trapsReportBrowser",
                                          saveDir=getwd(),
                                          popDistType = "linear",
                                          popMaxDist = 2000,
@@ -48,8 +49,6 @@ parameters <- list(selectROI = list(.plotInitialTime = 1),
                                          basemap = "roadmap",
                                          mapRisk = TRUE,
                                          mapHiRisk = TRUE,
-                                         hiRisk1 = 0.85,
-                                         hiRisk2 = 10.0,
                                          .pdfInitialTime = 100))
 
 
@@ -67,8 +66,6 @@ windows(xpos=1940,ypos=10,width=21,height=11,xpinch = 114, ypinch = 114)
 clearPlot()
 
 mySim1 <- spades(mySim, debug=TRUE) 
-
-
 
 
 

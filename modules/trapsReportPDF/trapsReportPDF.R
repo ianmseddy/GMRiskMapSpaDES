@@ -31,7 +31,6 @@ defineModule(sim, list(
     defineParameter("basemap", "character", "roadmap", NA, NA, "Basemap type of map. Options: satellite, roadmap, hybrid, terrain"),
     defineParameter("mapRisk", "logical", FALSE, NA, NA, "Logical of whether to map totalRisk to PDF map"),
     defineParameter("mapHiRisk", "logical", FALSE, NA, NA, "Logical of whether to map hiRisk to PDF map"),
-    defineParameter("hiRisk", "numeric", 0.8, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
     defineParameter(".pdfInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first pdf event should occur"),
     defineParameter(".pdfInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between pdf events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
@@ -41,7 +40,8 @@ defineModule(sim, list(
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data rasters, including object named P(sim)$dataName", sourceURL = NA),
-    expectsInput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk")
+    expectsInput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk"), 
+    expectsInput(objectName = "highRisk", objectClass = "RasterLayer", desc = "Raster of high risk. Will be null if mapHiRisk = FALSE.")
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
@@ -56,12 +56,7 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
-      
-      # do stuff for this event
-      sim <- trapsReportPDFInit(sim)
-      
+     
       # schedule future event(s)
       sim <- scheduleEvent(sim, start(sim), "trapsReportPDF", "checkinputs", .last())
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "trapsReportPDF", "save")
@@ -157,10 +152,6 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
 ## Event Functions ##
 
 ### init event:
-trapsReportPDFInit <- function(sim) {
-  
-  return(invisible(sim))
-}
 
 
 ### pdfopen event:
@@ -212,10 +203,8 @@ trapsReportPDFoverall <- function(sim) {
   }
   # if mapHiRisk=TRUE: add hiRisk to map
   if(P(sim)$mapHiRisk == TRUE) {
-    highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0             , P(sim)$hiRisk1            , NA,
-                                                           P(sim)$hiRisk1, P(sim)$hiRisk2            , 1 ,
-                                                           P(sim)$hiRisk2, max(values(sim$totalRisk)), 2  ), ncol=3, byrow=T), include.lowest=TRUE)
-    highRiskGoogle <- raster::projectRaster(highRisk, mapGoogle)
+
+    highRiskGoogle <- raster::projectRaster(sim$highRisk, mapGoogle)
     highRiskGoogle[highRiskGoogle<=0] <- NA
     if("water" %in% names(sim$dataList)) {
       waterMask <- raster::projectRaster(sim$dataList$water, highRiskGoogle, method="ngb")
@@ -232,7 +221,7 @@ trapsReportPDFoverall <- function(sim) {
   }
   # plot traps to map
   posTrapsGoogle <- sp::spTransform(posTraps, CRSobj = sp::CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
-  points(posTrapsGoogle, pch=16, cex=0.7)
+  points(posTrapsGoogle, pch=16, cex=1)
   
   # add legend, scalebar, box
   leg <- legend("bottomleft", legend=paste("Positive traps    "), 
@@ -278,7 +267,7 @@ trapsReportPDFtrapextent <- function(sim) {
   mapGoogle <- dismo::gmap(x = posTrapsGoogle, type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1)
   box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
   plot_gmap(mapGoogle) #plot
-  posTrapsGoogle
+ 
   # if mapRisk=TRUE: add totalRisk to map
   if(P(sim)$mapRisk == TRUE) {
     riskGoogle <- raster::projectRaster(sim$totalRisk, mapGoogle)
@@ -291,8 +280,9 @@ trapsReportPDFtrapextent <- function(sim) {
   }
   # if mapHiRisk=TRUE: add hiRisk to map
   if(P(sim)$mapHiRisk == TRUE) {
-    highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0, P(sim)$hiRisk, NA, P(sim)$hiRisk, 1, 1), ncol=3, byrow=T), include.lowest=TRUE)
-    highRiskGoogle <- raster::projectRaster(highRisk, mapGoogle)
+
+    highRiskGoogle <- raster::projectRaster(sim$highRisk, mapGoogle)
+   
     highRiskGoogle[highRiskGoogle<=0] <- NA
     if("water" %in% names(sim$dataList)) {
       waterMask <- raster::projectRaster(sim$dataList$water, highRiskGoogle, method="ngb")
@@ -302,8 +292,9 @@ trapsReportPDFtrapextent <- function(sim) {
   }
   
   # plot traps to map
-  points(posTrapsGoogle, pch=16, cex=0.7)
   
+  points(posTrapsGoogle, pch=16, cex=0.5)
+
   # add legend, scalebar, box
   leg <- legend("bottomleft", legend=paste("Positive traps    "), 
                 pch=16, cex=0.8, pt.cex=1, bg="white", plot=FALSE)
@@ -340,6 +331,7 @@ trapsReportPDFtraps <- function(sim) {
     posTraps <- subset(sim$dataList[[P(sim)$dataName]], sim$dataList[[P(sim)$dataName]][[1]] > 0)
   }
   # project to google crs
+  
   posTrapsGoogle <- sp::spTransform(posTraps, CRSobj = sp::CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
 
   posTraps <- posTraps[with(posTraps, order(posTraps$traps, decreasing=TRUE)), ] # reorder posTraps by trap catch
@@ -418,8 +410,7 @@ trapsReportPDFtraps <- function(sim) {
       }
       # if mapHiRisk=TRUE: add hiRisk to map
       if(P(sim)$mapHiRisk == TRUE) {
-        highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0, P(sim)$hiRisk, NA, P(sim)$hiRisk, 1, 1), ncol=3, byrow=T), include.lowest=TRUE)
-        highRiskGoogleTemp <- raster::projectRaster(highRisk, tempGoogleMap)
+        highRiskGoogleTemp <- raster::projectRaster(sim$highRisk, tempGoogleMap)
         highRiskGoogleTemp[highRiskGoogleTemp<=0] <- NA
         if("water" %in% names(sim$dataList)) {
           waterMask <- raster::projectRaster(sim$dataList$water, highRiskGoogleTemp, method="ngb")

@@ -22,8 +22,6 @@ defineModule(sim, list(
     defineParameter("basemap", "character", "satellite", NA, NA, "Basemap of leaflet risk map. Options: satellite, roadmap, hybrid, terrain"),
     defineParameter("mapRisk", "logical", FALSE, NA, NA, "Logical of whether to map totalRisk on leaflet map"),
     defineParameter("mapHiRisk", "logical", TRUE, NA, NA, "Logical of whether to map hiRisk on leaflet map"),
-    defineParameter("hiRisk1", "numeric", 0.5, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
-    defineParameter("hiRisk2", "numeric", 10.0, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
     defineParameter("dataLayers", "List", NA, NA, NA, "List of names, naming layers in dataList to be added to map"),
     defineParameter("riskLayers", "List", NA, NA, NA, "List of names, naming layers in riskList to be added to map"),
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
@@ -37,7 +35,8 @@ defineModule(sim, list(
     expectsInput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS"),
     expectsInput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk"),
     expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data rasters", sourceURL = NA),
-    expectsInput(objectName = "riskList", objectClass = "List", desc = "List of risk rasters", sourceURL = NA)
+    expectsInput(objectName = "riskList", objectClass = "List", desc = "List of risk rasters", sourceURL = NA), 
+    expectsInput(objectName = "highRisk", objectClass = "RasterLayer", desc = "Raster of high risk areas.")
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
@@ -206,10 +205,8 @@ leafletRiskMapLeafTotalRisk <- function(sim) {
 
 ### maphirisk event:
 leafletRiskMapLeafHiRisk <- function(sim) {
-  highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0             , P(sim)$hiRisk1            , NA,
-                                                         P(sim)$hiRisk1, P(sim)$hiRisk2            , 1 ,
-                                                         P(sim)$hiRisk2, max(values(sim$totalRisk)), 2  ), ncol=3, byrow=T), include.lowest=TRUE)
-  highRiskLeaflet <- leaflet::projectRasterForLeaflet(highRisk, method = "bilinear")
+ 
+  highRiskLeaflet <- leaflet::projectRasterForLeaflet(sim$highRisk, method = "bilinear")
   highRiskLeaflet[highRiskLeaflet<=0] <- NA
   if("water" %in% names(sim$dataList)) {
     waterLeaflet <- leaflet::projectRasterForLeaflet(sim$dataList$water, method = "bilinear")
