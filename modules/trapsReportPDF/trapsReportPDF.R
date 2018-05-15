@@ -249,7 +249,7 @@ trapsReportPDFoverall <- function(sim) {
 
 ### pdfmap event: second page of PDF - map of all traps (could be smaller than entire ROI)
 trapsReportPDFtrapextent <- function(sim) {
-  
+ 
   # subset positive traps 
   if( P(sim)$dataName %in% names(sim$dataList[[P(sim)$dataName]]) ) {
     posTraps <- subset(sim$dataList[[P(sim)$dataName]], sim$dataList[[P(sim)$dataName]][[charmatch(P(sim)$dataName, names(sim$dataList[[P(sim)$dataName]]))]] > 0)
@@ -259,30 +259,37 @@ trapsReportPDFtrapextent <- function(sim) {
   
   #### get google basemap
   posTrapsGoogle <- sp::spTransform(posTraps, CRSobj = sp::CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
+  
   # extent of posTraps plus added buffer
   zoomLevel <- ggmap::calc_zoom(c(xmin(posTrapsGoogle)-(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10,  
                                   xmax(posTrapsGoogle)+(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10), 
                                 c(ymin(posTrapsGoogle)-(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10, 
                                   ymax(posTrapsGoogle)+(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10))  
   mapGoogle <- dismo::gmap(x = posTrapsGoogle, type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1)
+  # temp_ras <- projectRaster(sim$totalRisk, mapGoogle)
+  # mapGoogle <- dismo::gmap(x = temp_ras, type = P(sim)$basemap, lonlat = TRUE, zoom = zoomLevel-1)
+  
   box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
   plot_gmap(mapGoogle) #plot
- 
+  
+  # plot traps to map
+  posTrapsGoogle <- sp::spTransform(posTraps, mapGoogle@crs)
+  plot(posTrapsGoogle, pch = 16, cex = 0.8, add=T)
+  
   # if mapRisk=TRUE: add totalRisk to map
-  if(P(sim)$mapRisk == TRUE) {
+    if(P(sim)$mapRisk == TRUE) {
     riskGoogle <- raster::projectRaster(sim$totalRisk, mapGoogle)
     riskGoogle[riskGoogle<=0] <- NA
     if("water" %in% names(sim$dataList)) {
       waterMask <- raster::projectRaster(sim$dataList$water, mapGoogle, method="ngb")
       riskGoogle <- raster::mask(riskGoogle, waterMask, inverse=TRUE)
     }
-    plot(riskGoogle, add=T, col=rev(heat.colors(16)), legend=FALSE, alpha=0.3)
+    plot(riskGoogle, add=T, col=rev(heat.colors(16)), legend=FALSE, alpha=0.3)#rev(heat.colors(16))
   }
   # if mapHiRisk=TRUE: add hiRisk to map
   if(P(sim)$mapHiRisk == TRUE) {
 
     highRiskGoogle <- raster::projectRaster(sim$highRisk, mapGoogle)
-   
     highRiskGoogle[highRiskGoogle<=0] <- NA
     if("water" %in% names(sim$dataList)) {
       waterMask <- raster::projectRaster(sim$dataList$water, highRiskGoogle, method="ngb")
@@ -290,10 +297,7 @@ trapsReportPDFtrapextent <- function(sim) {
     }
     plot(highRiskGoogle, add=T, col="#FF0000", legend=FALSE, alpha=0.4)
   }
-  
-  # plot traps to map
-  
-  points(posTrapsGoogle, pch=16, cex=0.5)
+
 
   # add legend, scalebar, box
   leg <- legend("bottomleft", legend=paste("Positive traps    "), 
@@ -303,7 +307,7 @@ trapsReportPDFtrapextent <- function(sim) {
          pch=16, cex=0.8, pt.cex=1, bg="white", bty = "n")
   
   #temp <- sp::spTransform(posTrapsGoogle, CRSobj = sp::CRS("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs"))
-  temp <- projectRaster(mapGoogle, crs=crs("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs"))
+    temp <- projectRaster(mapGoogle, crs=crs("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs"))
   xDist <- round((sqrt((xmax(temp)-xmin(temp))^2 + (ymax(temp)-ymin(temp))^2)/1000)/10)
   if(xDist < 1) xDist <- 1
   distOpts <- c(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
@@ -316,7 +320,7 @@ trapsReportPDFtrapextent <- function(sim) {
        label="Positive Trap Locations", font=2, cex=1.5)
   box2 <- as(extent(c(xmin(box), xmax(box), ymin(legbox), ymax(box))), "SpatialPolygons")
   plot(box2, add=T)
-  
+  dev.off()
   return(invisible(sim))
 }
 
