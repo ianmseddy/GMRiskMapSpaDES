@@ -5,7 +5,7 @@ library(SpaDES.core)
 #setwd("...../GMRiskMapSpaDES/") # <---- change ..... to your directory
 #setwd("/Users/kaitlynschyrmann/Desktop/SpaDES GM Module 2018/GMRiskMapSpaDES/")
 # setwd("C:/Brian/Projects/Spades/GMRiskMapSpaDES/")
-
+#created an R Project so that the module so the working directory is the location of the project directory, regardless of user.  
 ## set simulation and module parameters 
 setPaths(cachePath = file.path("cache"),
          inputPath = file.path("inputs"),
@@ -18,7 +18,7 @@ objects <- list(roi = "LowerMainland") # predefined roi character string
 #objects <- list() # no roi - select on map
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
-                "selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF")  # ,"loadLcc2015",  "lccToTreeCover", )
+                "selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF" ,"loadLcc2015",  "lccToTreeCover")
 parameters <- list(selectROI = list(.plotInitialTime = 1),
                    loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
@@ -30,17 +30,17 @@ parameters <- list(selectROI = list(.plotInitialTime = 1),
                    calculateRisk = list(species = "GypsyMoth",
                                         .plotInitialTime = 1),
                    combineRisk = list(.plotInitialTime = 1, 
-                                      hiRisk1 = 0.85,
+                                      hiRisk1 = 0.5,
                                       hiRisk2 = 10, 
                                       mapHiRisk = TRUE),
                    leafletRiskMap = list(basemap = "satellite",
                                          mapRisk = TRUE,
                                          mapHiRisk = TRUE,
                                          dataLayers = list("traps"),
-                                         #riskLayers = list("trapsRisk"),
+                                         riskLayers = list("trapsRisk"), #IE commented out
                                          .plotInitialTime = 1),
                    trapsReportPDF = list(dataName = "traps",
-                                         fileName = "trapsReportBrowser",
+                                         fileName = "trapsReport",
                                          saveDir=getwd(),
                                          popDistType = "linear",
                                          popMaxDist = 2000,

@@ -108,11 +108,12 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
       
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim), "trapsReportPDF", "pdfmap")
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.pdfInterval, "trapsReportPDF", "pdfopen")
+      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.pdfInterval, "trapsReportPDF", "pdfopen")
     },
     pdfmap = {
       # do stuff for this event
       sim <- trapsReportPDFoverall(sim)
+      
       sim <- trapsReportPDFtrapextent(sim)
       
       # schedule future event(s)
@@ -187,6 +188,7 @@ trapsReportPDFoverall <- function(sim) {
   #### get google basemap
   roiGoogle <- sp::spTransform(sim$ROI, CRSobj = sp::CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
   zoomLevel <- ggmap::calc_zoom(c(xmin(roiGoogle), xmax(roiGoogle)), c(ymin(roiGoogle), ymax(roiGoogle)))
+ 
   mapGoogle <- dismo::gmap(x = roiGoogle, type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1)
   box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
   plot_gmap(mapGoogle) #plot
@@ -313,14 +315,14 @@ trapsReportPDFtrapextent <- function(sim) {
   distOpts <- c(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
   scaleDist <- distOpts[length(xDist>=distOpts[(xDist >= distOpts) == TRUE])]
   scaleDivs <- ifelse(scaleDist <= 5, 2, 4)
-  
+ 
   raster::scalebar(d=scaleDist, xy=c(leg$rect$left + leg$rect$w, ymin(legbox) + (leg$rect$h/3)),
                    type="bar", divs=scaleDivs, lonlat=TRUE, below="km", cex=0.7)
   text(x = (xmax(box)+xmin(box))/2, y = ymax(box)+(leg$rect$h/2),
        label="Positive Trap Locations", font=2, cex=1.5)
   box2 <- as(extent(c(xmin(box), xmax(box), ymin(legbox), ymax(box))), "SpatialPolygons")
   plot(box2, add=T)
-  dev.off()
+  
   return(invisible(sim))
 }
 
@@ -463,7 +465,7 @@ trapsReportPDFtraps <- function(sim) {
 
 ### pdfdata event: last page of PDF - dataframe of trap information
 trapsReportPDFdata <- function(sim) {
-  
+
   posTraps <- subset(sim$dataList[[P(sim)$dataName]], !is.na(sim$dataList[[P(sim)$dataName]]$populationID))
   
   # project to google crs
