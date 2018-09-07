@@ -34,9 +34,7 @@ defineModule(sim, list(
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
     createsOutput(objectName = "dataList", objectClass = "List", desc = "List of cropped & reprojected data"),
-    createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS"),
-    createsOutput(objectName = "crs", objectClass = "character", desc = "PROJ.4 character string defining desired coordinate reference system"),
-    createsOutput(objectName = "res", objectClass = "numeric", desc = "Desired raster resolution, in meters. Single number or vector of two numbers")
+    createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS")
   )
 ))
 
@@ -98,10 +96,7 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 cropReprojectDataInit <- function(sim) {
-  
-  sim$crs <- P(sim)$crs
-  sim$res <- P(sim)$res
-  
+
   return(invisible(sim))
 }
 
@@ -129,11 +124,11 @@ cropReprojectDataPlot <- function(sim) {
                               coords.x2 = c(ymin(sim$ROI), ymax(sim$ROI), ymin(sim$ROI), ymax(sim$ROI)),
                               ID = c("SW", "NW", "SE", "NE"))
         coordinates(corners) <- ~coords.x1+coords.x2
-        crs(corners) <- crs(mySim$crs)
+        crs(corners) <- P(sim)$crs
         
         tempdf <- plyr::rbind.fill(data.frame(sim$dataList[[i]]), data.frame(corners))
         coordinates(tempdf) <- ~coords.x1+coords.x2
-        crs(tempdf) <- crs(mySim$crs)
+        crs(tempdf) <- P(sim)$crs
         tempdf$col <- ifelse(is.na(tempdf[[i]]), "white", "black")
         tempSim[[i]] <- tempdf
       }
@@ -147,91 +142,37 @@ cropReprojectDataPlot <- function(sim) {
 
 ### gis event: crop and reproject dataListInit rasters
 cropReprojectDataGIS <- function(sim) {
+  browser()
   
-  sim$dataList <- list()
-  
-  if(sp::proj4string(sim$roi) != sim$crs) {
+  if(sp::proj4string(sim$ROI) != P(sim)$crs) {
     sim$ROI <- Cache(sp::spTransform, sim$roi, sp::CRS(sim$crs))
-  } else { sim$ROI <- sim$roi }
+  }
   
   templateRas <- raster::raster(ext=raster::extent(sim$ROI), 
-                                resolution=sim$res, 
-                                crs=sim$crs)
+                                resolution = P(sim)$res, 
+                                crs = P(sim)$crs)
   
-  for(i in 1:length(sim$dataListInit)) {
+  #Get unique regions (we may have to make actual Region name a )
+  Regions <- unique(studyArea$Region)
+  
+  #Make new SpatialPolygonsDataFrame for each region
+  allRegions <- lapply(sim$ROI, FUN = function(x, Region = Regions) {
+    a <- x[x$Region == Region,]
+    return(a)
+  })
+  
+  #Extend any rasters in dataList so that they fully overlap ROI
+  sim$dataList <- lapply(Regions, FUN = function(region, files = sim$dataListInit, dir = outputPath(sim)){
     
-    if( is(sim$dataListInit[[i]], "Raster")) {
-      
-      dataPoly <- as(extent(sim$dataListInit[[i]]), "SpatialPolygons")
-      crs(dataPoly) <- crs(sim$dataListInit[[i]])
-      tempROI <- sp::spTransform(sim$ROI, crs(dataPoly))
-      
-      if (rgeos::gCovers(dataPoly, tempROI)) { #fully within ROI: normal gis
-        sim$dataList[[i]] <- Cache(raster::projectRaster, from=sim$dataListInit[[i]], to=templateRas, method="ngb")
-        sim$dataList[[i]] <- Cache(raster::mask, x = sim$dataList[[i]], mask = sim$ROI)
-        names(sim$dataList)[[i]] <- names(sim$dataListInit)[[i]]
-        
-      } else if (rgeos::gIntersects(tempROI, dataPoly) ) { #intersects ROI: extend raster match extent
-        message("cropReprojectData: '", names(sim$dataListInit)[i], "' extent intersects ROI (not fully within). Dataset extended to match ROI. Extended values = NA.")
-        temp <- Cache(crop, sim$dataListInit[[i]], tempROI)
-        temp <- Cache(extend, temp, tempROI, value=NA)  # new extended layer
-        
-        sim$dataList[[i]] <- Cache(raster::projectRaster, from=temp, to=templateRas, method="ngb")
-        sim$dataList[[i]] <- Cache(raster::mask, x = sim$dataList[[i]], mask = sim$ROI)
-        names(sim$dataList)[[i]] <- names(sim$dataListInit)[[i]]
-        
-      } else { #fully outside ROI: cannot use layer
-        message("cropReprojectData: '", names(sim$dataListInit)[i], "' extent outside ROI. Data not usable with selected ROI.")
-      }
-      
-    } else if( is(sim$dataListInit[[i]], "Spatial") ) {
-
-      temp <- sp::spTransform(sim$dataListInit[[i]], sp::CRS(sim$crs))
-      temp <- raster::crop(temp, sim$ROI)
-      
-      # checking if cropped points fall within ROI
-      if( length(temp) == 0 ) { #fully outside ROI: cannot use layer
-        message("cropReprojectData: '", names(sim$dataListInit)[i], "' extent outside ROI. Data not usable with selected ROI.")
-      } else { #points within ROI: normal gis
-        sim$dataList[[i]] <- temp
-        names(sim$dataList)[[i]] <- names(sim$dataListInit)[[i]]
-      }
-    }
-  }
+    subList <- lappy(files, FUN = function(file, roi = region, dir = dir){
+      output <- Cache(postProcess, filename1 = file, studyArea = roi, 
+                      filename2 = paste(dir,"/", file, "_", roi, sep = ""))
+      return(output)
+    } )
+    #run postProcess sim$dataListInit by region (postProcess clips, masks, and reprojects)
+    
+    return(subList)
+    })
+  names(sim$dataList) <- names(allRegions)
   return(invisible(sim))
 }
-
-
-# .inputObjects <- function(sim) {
-#   
-#   # creating ROI object if not provided
-#   if(is.null(sim$ROI)) {
-#     x <- c(-1935000, -1934000, -1909000, -1911000, -1917000, -1922000, -1938000, -1935000)
-#     y <- c(1410000, 1407000, 1405000, 1414000, 1414500, 1413800, 1414200, 1410000)
-#     ROI <- cbind(x, y) %>%
-#       Polygon() %>%
-#       list() %>%
-#       Polygons("s1") %>%
-#       list() %>%
-#       SpatialPolygons(1L)
-#     crs(ROI) <- crs("+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0")
-#     sim$ROI <- ROI
-#   }
-#  
-#   
-#   ##### Create data if sim$dataListInit not provided
-#   #if(is.null(sim$dataListInit)){
-#   #  sim$dataListInit <- list()
-#   #  
-#   #  exampleRas <- raster::raster(ext=raster::extent(P(sim)$ROI), 
-#   #                               resolution=P(sim)$res, 
-#   #                               crs=raster::crs(P(sim)$crs))
-#   #  values(exampleRas) <- runif(length(exampleRas), min=1, max=100)
-#   #  names(exampleRas) <- "treeCover"
-#   #  
-#   #  sim$dataListInit[["treeCover"]] <- exampleRas
-#   #}
-#   
-#   return(invisible(sim))
-# }
-### add additional events as needed by copy/pasting from above

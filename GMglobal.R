@@ -1,5 +1,5 @@
 
-library(SpaDES.core)
+library(SpaDES)
 
 
 #setwd("...../GMRiskMapSpaDES/") # <---- change ..... to your directory
@@ -17,39 +17,40 @@ objects <- list(roi = "LowerMainland") # predefined roi character string
 #objects <- list(roi = testROI) # SpatialPolygon roi - script to create testROI object below
 #objects <- list() # no roi - select on map
 
-modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
-                "selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF" ,"loadLcc2015",  "lccToTreeCover")
+modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations")#,  
+                #"selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF" ,"loadLcc2015",  "lccToTreeCover")
 parameters <- list(selectROI = list(.plotInitialTime = 1),
                    loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
                    loadPortLocations = list(.plotInitialTime = 1),
                    cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0",
                                             res = 30,
-                                            .plotInitialTime = 1),
-                   lccToTreeCover = list(.plotInitialTime = 1),
-                   calculateRisk = list(species = "GypsyMoth",
-                                        .plotInitialTime = 1),
-                   combineRisk = list(.plotInitialTime = 1, 
-                                      hiRisk1 = 0.5,
-                                      hiRisk2 = 10, 
-                                      mapHiRisk = TRUE),
-                   leafletRiskMap = list(basemap = "satellite",
-                                         mapRisk = TRUE,
-                                         mapHiRisk = TRUE,
-                                         dataLayers = list("traps"),
-                                         riskLayers = list("trapsRisk"), #IE commented out
-                                         .plotInitialTime = 1),
-                   trapsReportPDF = list(dataName = "traps",
-                                         fileName = "trapsReport",
-                                         saveDir=getwd(),
-                                         popDistType = "linear",
-                                         popMaxDist = 2000,
-                                         popMinDist = 750,
-                                         popMaxCatch = 8,
-                                         basemap = "roadmap",
-                                         mapRisk = TRUE,
-                                         mapHiRisk = TRUE,
-                                         .pdfInitialTime = 100))
+                                            .plotInitialTime = 1)#,
+                   # lccToTreeCover = list(.plotInitialTime = 1),
+                   # calculateRisk = list(species = "GypsyMoth",
+                   #                      .plotInitialTime = 1),
+                   # combineRisk = list(.plotInitialTime = 1, 
+                   #                    hiRisk1 = 0.5,
+                   #                    hiRisk2 = 10, 
+                   #                    mapHiRisk = TRUE),
+                   # leafletRiskMap = list(basemap = "satellite",
+                   #                       mapRisk = TRUE,
+                   #                       mapHiRisk = TRUE,
+                   #                       dataLayers = list("traps"),
+                   #                       riskLayers = list("trapsRisk"), #IE commented out
+                   #                       .plotInitialTime = 1),
+                   # trapsReportPDF = list(dataName = "traps",
+                   #                       fileName = "trapsReport",
+                   #                       saveDir=getwd(),
+                   #                       popDistType = "linear",
+                   #                       popMaxDist = 2000,
+                   #                       popMinDist = 750,
+                   #                       popMaxCatch = 8,
+                   #                       basemap = "roadmap",
+                   #                       mapRisk = TRUE,
+                   #                       mapHiRisk = TRUE,
+                   #                       .pdfInitialTime = 100)
+)
 
 
 # Simulation setup

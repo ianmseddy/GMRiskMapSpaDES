@@ -42,29 +42,22 @@ doEvent.lccToTreeCover = function(sim, eventTime, eventType, debug = FALSE) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
-      
-      # do stuff for this event
+
       sim <- lccToTreeCoverInit(sim)
       
-      # schedule future event(s)
+
       sim <- scheduleEvent(sim, start(sim)+0.1, "lccToTreeCover", "reclass")
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "lccToTreeCover", "save")
     },
     plot = {
-      # do stuff for this event
+
       lccToTreeCoverPlot(sim)
       
-      # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "lccToTreeCover", "plot")
       
     },
     save = {
-      # do stuff for this event
-      
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "lccToTreeCover", "save")
+
     },
     reclass = {
       # do stuff for this event
