@@ -13,14 +13,14 @@ setPaths(cachePath = file.path("cache"),
          outputPath = file.path("outputs"))
 paths <- getPaths()
 times <- list(start=1.0, end=10.5, timeunit="year")
-objects <- list(roi = "LowerMainland") # predefined roi character string
+objects <- list() # predefined roi character string
 #objects <- list(roi = testROI) # SpatialPolygon roi - script to create testROI object below
 #objects <- list() # no roi - select on map
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations")#,  
                 #"selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF" ,"loadLcc2015",  "lccToTreeCover")
-parameters <- list(selectROI = list(.plotInitialTime = 1),
-                   loadLcc2015 = list(.plotInitialTime = 1),
+#selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
+parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
                    loadPortLocations = list(.plotInitialTime = 1),
                    cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0",
@@ -59,6 +59,7 @@ mySim <- simInit(params = parameters,
                  paths =  paths,
                  times = times,
                  objects = objects)
+
 
 graphics.off() 
 windows(xpos=1940,ypos=10,width=21,height=11,xpinch = 114, ypinch = 114)

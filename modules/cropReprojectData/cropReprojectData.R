@@ -29,12 +29,13 @@ defineModule(sim, list(
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = "dataListInit", objectClass = "List", desc = "List of data rasters. If NULL, recreates an empty list in .inputsObjects", sourceURL = NA),
-    expectsInput(objectName = "roi", objectClass = c("SpatialPolygons"), desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS.", sourceURL = NA)
+    expectsInput(objectName = "ROI", objectClass = "data.frame", 
+                 desc = "data.frame defining regions of interest and their extents. Headers should include name, ymin, ymax, xmin, and xmax", sourceURL = NA)
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
     createsOutput(objectName = "dataList", objectClass = "List", desc = "List of cropped & reprojected data"),
-    createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS")
+    # createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS")
   )
 ))
 
@@ -48,13 +49,12 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
     init = {
       ### check for more detailed object dependencies:
       ### (use `checkObject` or similar)
-      
+     
       # do stuff for this event
       sim <- cropReprojectDataInit(sim)
       
       # schedule future event(s) 
       sim <- scheduleEvent(sim, start(sim), "cropReprojectData", "gis")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "cropReprojectData", "save")
     },
     plot = {
       # do stuff for this event
@@ -63,12 +63,7 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "cropReprojectData", "plot")
     },
-    save = {
-      # do stuff for this event
-      
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "cropReprojectData", "save")
-    },
+    
     gis = {
       # do stuff for this event
       
@@ -96,7 +91,23 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 cropReprojectDataInit <- function(sim) {
-
+  
+  temp <- vector(mode = "list", length = nrow(sim$ROI))
+  vars <- c("xmn", "xmx", "ymn", "ymx")
+  
+  for (i in 1:nrow(sim$ROI)) {
+    
+    #This subsets each row and turns it into a raster
+    subr <- sim$ROI[i, vars]
+    ROI <- raster(xmn = subr$xmn, xmx = subr$xmx, ymn = subr$ymn, ymx = subr$ymx)
+    crs(ROI) <-  CRS(P(sim)$crs)
+    res(ROI) <- P(sim)$res
+    # names(ROI) <- sim$ROI[i, 1]
+    temp[[i]] <- ROI
+    }
+  
+  names(temp) <- sim$ROI$Region
+  sim$ROI <- temp
   return(invisible(sim))
 }
 
@@ -109,7 +120,8 @@ cropReprojectDataInit <- function(sim) {
 # }
 
 cropReprojectDataPlot <- function(sim) {
-  
+  browser()
+  #Make sure that dataList is formatted correctly. Then, decide how to do this...
   if( length(sim$dataList)==1 ) { #if only one element in dataList
     Plot(sim$dataList[[1]], title=names(sim$dataList)[1])
   } else {
@@ -142,37 +154,39 @@ cropReprojectDataPlot <- function(sim) {
 
 ### gis event: crop and reproject dataListInit rasters
 cropReprojectDataGIS <- function(sim) {
-  browser()
-  
-  if(sp::proj4string(sim$ROI) != P(sim)$crs) {
-    sim$ROI <- Cache(sp::spTransform, sim$roi, sp::CRS(sim$crs))
-  }
-  
-  templateRas <- raster::raster(ext=raster::extent(sim$ROI), 
-                                resolution = P(sim)$res, 
-                                crs = P(sim)$crs)
-  
-  #Get unique regions (we may have to make actual Region name a )
-  Regions <- unique(studyArea$Region)
-  
-  #Make new SpatialPolygonsDataFrame for each region
-  allRegions <- lapply(sim$ROI, FUN = function(x, Region = Regions) {
-    a <- x[x$Region == Region,]
-    return(a)
-  })
-  
   #Extend any rasters in dataList so that they fully overlap ROI
-  sim$dataList <- lapply(Regions, FUN = function(region, files = sim$dataListInit, dir = outputPath(sim)){
+  sim$dataList <- lapply(1:length(sim$ROI), FUN = function(i, files = sim$dataListInit, ROI= sim$ROI, 
+                                                            dir = outputPath(sim)){
+    region <- ROI[i]
+    subIndex <- 1:length(files)
     
-    subList <- lappy(files, FUN = function(file, roi = region, dir = dir){
-      output <- Cache(postProcess, filename1 = file, studyArea = roi, 
-                      filename2 = paste(dir,"/", file, "_", roi, sep = ""))
+    subList <- lapply(subIndex, FUN = function(ii, x = region, ...){
+     
+      file <- files[ii] # I do this instead of lapplying over files directly so I can preserve names for file output
+      
+      output <- Cache(postProcess, x = file[[1]], rasterToMatch = x[[1]], 
+                      filename2 = paste(dir,"/", names(file), "_", names(x), sep = ""))
       return(output)
-    } )
-    #run postProcess sim$dataListInit by region (postProcess clips, masks, and reprojects)
+      })
     
+    class(file)
+    #run postProcess sim$dataListInit by region (postProcess clips, masks, and reprojects)
+    names(subList) <- names(sim$dataListInit)
     return(subList)
     })
-  names(sim$dataList) <- names(allRegions)
+  
+  names(sim$dataList) <- names(sim$ROI)
   return(invisible(sim))
+}
+
+
+.inputObjects <- function(sim) {
+  sim$ROI <- data.frame(Region = c("SouthwestBC", "VancouverIsland", "LowerMainland"),
+                        xmn = c(-2118298, -2040398, -1942000),
+                        xmx = c(-1770148, -1948121, -1873500),
+                        ymn = c(1255505, 1312569, 1359500),
+                        ymx = c(1546415, 1434588, 1420300))
+  
+  return(sim)
+  
 }
