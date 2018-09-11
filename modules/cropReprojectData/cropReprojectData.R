@@ -24,8 +24,9 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
-  ),
+    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"), 
+    defineParameter("usePlot", "logical", FALSE, NA, NA, "Should the module plot GIS files after cropping to ROI?")
+    ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = "dataListInit", objectClass = "List", desc = "List of data rasters. If NULL, recreates an empty list in .inputsObjects", sourceURL = NA),
@@ -34,7 +35,7 @@ defineModule(sim, list(
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
-    createsOutput(objectName = "dataList", objectClass = "List", desc = "List of cropped & reprojected data"),
+    createsOutput(objectName = "dataList", objectClass = "List", desc = "List of cropped & reprojected data")
     # createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS")
   )
 ))
@@ -58,10 +59,11 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
     },
     plot = {
       # do stuff for this event
-      cropReprojectDataPlot(sim)
-      
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "cropReprojectData", "plot")
+      if (P(sim)$usePlot == TRUE) {
+        cropReprojectDataPlot(sim)
+        # schedule future event(s)
+        sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "cropReprojectData", "plot")
+      }
     },
     
     gis = {
@@ -91,7 +93,7 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 cropReprojectDataInit <- function(sim) {
-  
+ 
   temp <- vector(mode = "list", length = nrow(sim$ROI))
   vars <- c("xmn", "xmx", "ymn", "ymx")
   
@@ -120,34 +122,34 @@ cropReprojectDataInit <- function(sim) {
 # }
 
 cropReprojectDataPlot <- function(sim) {
-  browser()
+  
   #Make sure that dataList is formatted correctly. Then, decide how to do this...
-  if( length(sim$dataList)==1 ) { #if only one element in dataList
-    Plot(sim$dataList[[1]], title=names(sim$dataList)[1])
-  } else {
-    
-    tempSim <- sim$dataList
-    for( i in names(sim$dataList) ) {
+  for (i in 1: length(sim$dataList)) {
+    tempSim <- sim$dataList[[i]]
+    print(paste("plotting ", names(sim$dataList[i]), sep = ""))
+    for( ii in 1:length(names(tempSim))) {
       
       #if only one point in data, corner points added for plotting (Plot() fails with only 1 point)
-      if( is(sim$dataList[[i]], "SpatialPoints") && length(sim$dataList[[i]])==1 ) {
+      if( is(tempSim[[ii]], "SpatialPointsDataFrame") && length(tempSim[[ii]])==1 ) {
         message("cropReprojectData: '", i, "' in dataList only has 1 point. ROI corner points added to map for reference.")
-        corners <- data.frame(coords.x1 = c(xmin(sim$ROI), xmin(sim$ROI), xmax(sim$ROI), xmax(sim$ROI)),
-                              coords.x2 = c(ymin(sim$ROI), ymax(sim$ROI), ymin(sim$ROI), ymax(sim$ROI)),
+        corners <- data.frame(coords.x1 = c(xmin(sim$ROI[i]), xmin(sim$ROI[i]), xmax(sim$ROI[i]), xmax(sim$ROI[i])),
+                              coords.x2 = c(ymin(sim$ROI[i]), ymax(sim$ROI[i]), ymin(sim$ROI[i]), ymax(sim$ROI[i])),
                               ID = c("SW", "NW", "SE", "NE"))
         coordinates(corners) <- ~coords.x1+coords.x2
-        crs(corners) <- P(sim)$crs
+        crs(corners) <- crs(mySim$crs)
         
-        tempdf <- plyr::rbind.fill(data.frame(sim$dataList[[i]]), data.frame(corners))
+        tempdf <- plyr::rbind.fill(data.frame(tempSim[[ii]]), data.frame(corners))
         coordinates(tempdf) <- ~coords.x1+coords.x2
         crs(tempdf) <- P(sim)$crs
-        tempdf$col <- ifelse(is.na(tempdf[[i]]), "white", "black")
-        tempSim[[i]] <- tempdf
+        tempdf$col <- ifelse(is.na(tempdf[[ii]]), "white", "black")
+        tempSim[[ii]] <- tempdf
       }
     }
-    Plot(tempSim, title=TRUE)
+    
+    clearPlot()
+    Plot(tempSim) #this will write ROI to every plot
   }
-  
+
   return(invisible(sim))
 }
 
@@ -166,12 +168,20 @@ cropReprojectDataGIS <- function(sim) {
       
       output <- Cache(postProcess, x = file[[1]], rasterToMatch = x[[1]], 
                       filename2 = paste(dir,"/", names(file), "_", names(x), sep = ""))
+
+      if (class(output) == "SpatialPointsDataFrame") {
+        output@bbox <- raster::as.matrix(extent(x[[1]]))
+      } else if (is.null(output)) {
+        print(paste("no ", names(file), " in ", names(x), sep = ""))#class is null. It will be removed later  
+      } else if (class(output) == "RasterLayer") {
+        extent(output) <- extent(x = x[[1]])
+      }
       return(output)
-      })
+    })
     
-    class(file)
     #run postProcess sim$dataListInit by region (postProcess clips, masks, and reprojects)
     names(subList) <- names(sim$dataListInit)
+    subList <- Filter(Negate(is.null), subList)
     return(subList)
     })
   
@@ -181,12 +191,15 @@ cropReprojectDataGIS <- function(sim) {
 
 
 .inputObjects <- function(sim) {
+  
+  if(!suppliedElsewhere("ROI", sim)) {
   sim$ROI <- data.frame(Region = c("SouthwestBC", "VancouverIsland", "LowerMainland"),
                         xmn = c(-2118298, -2040398, -1942000),
                         xmx = c(-1770148, -1948121, -1873500),
                         ymn = c(1255505, 1312569, 1359500),
                         ymx = c(1546415, 1434588, 1420300))
   
-  return(sim)
+  }
   
+  return(invisible(sim))
 }
