@@ -78,7 +78,7 @@ doEvent.calculateRisk = function(sim, eventTime, eventType, debug = FALSE) {
     },
     risk = {
       # do stuff for this event
-      sim <- calculateRiskTranslate(sim)
+      sim <- Cache(calculateRiskTranslate, sim)
       
       # schedule future event(s)
       if(is.na(P(sim)$.plotInitialTime)) {
@@ -109,75 +109,93 @@ calculateRiskInit <- function(sim) {
 
 ### plot event:
 calculateRiskPlot <- function(sim) {
-  
-  Plot(sim$riskList, title = TRUE, cols=rev(heat.colors(16))) #legendRange = 0:1
-  if("water" %in% names(sim$dataList)) { #if water is a layer in dataList, add to risk maps
-    for(m in names(sim$riskList)) { 
-      Plot(sim$dataList[["water"]], addTo=m)
+ 
+  for (i in 1:length(sim$riskList)) {
+    clearPlot()
+    Plot(sim$riskList[[i]], title = TRUE, cols=rev(heat.colors(16))) #legendRange = 0:1
+    if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
+      for(m in names(sim$riskList[[i]])) { 
+        Plot(sim$dataList[[i]][["water"]], addTo=m)
+      }
     }
-  }
-  
+   }  
   return(invisible(sim))
 }
 
 ### risk event: translate dataList rasters to risk rasters
 calculateRiskTranslate <- function(sim) {
   
-  sim$riskList <- list()
-  
-  for(i in 1:length(sim$dataList)){
-    if( names(sim$dataList[i]) %in% sim$riskParams$layer ) { #if data layer is included in SpeciesRiskParams.csv
-      
-      tempParams <- subset(sim$riskParams, layer==names(sim$dataList[i])) #subset riskParams
-      
-      if(class(sim$dataList[[i]]) == "RasterLayer") { #if data layer is a RasterLayer
+  i <- 1:length(sim$dataList)
+  outList <- lapply(i, FUN = function(i, dataList = sim$dataList, riskParams = sim$riskParams,
+                                      ROI = sim$ROI) { 
+   
+    ROI <- ROI[[i]]
+    riskList <- list()
+    dataList <- dataList[[i]] #Subset dataList by ROI
+    
+    for(ii in 1:length(dataList)){
+      if( names(dataList[ii]) %in% riskParams$layer ) { #if data layer is included in SpeciesRiskParams.csv
         
-        fw <- focalWeightRisk(sim$dataList[[i]], 
-                              type = as.character(tempParams$value[grep("type",tempParams$parameter)]),
-                              a = as.numeric(as.character(tempParams$value[grep("a",tempParams$parameter)])), 
-                              b = as.numeric(as.character(tempParams$value[grep("b",tempParams$parameter)])), 
-                              riskCutoff = as.numeric(as.character(tempParams$value[grep("riskCutoff",tempParams$parameter)])))
-        risk <- Cache(raster::focal, sim$dataList[[i]], w=fw, pad=T, padValue=0)
-        #risk <- risk/max(raster::values(risk), na.rm=T) #  scale to 1 - can remove and scale elsewhere
-        risk <- risk * as.numeric(as.character(tempParams$value[grep("weight",tempParams$parameter)]))
-        #risk <- risk * ifelse(temp$params$direction=="increase", 1, -1) * as.numeric(temp$params$weight)
-        names(risk) <- paste0(names(sim$dataList)[[i]],"Risk")
-        sim$riskList[[names(risk)]] <- risk
+        tempParams <- subset(riskParams, layer==names(dataList[ii])) #subset riskParams
         
-      } else  if( is(sim$dataList[[i]], "Spatial") ) { #if data layer is Spatial*, needs to be rasterized to translate risk
-        if("RasterLayer" %in% lapply(sim$dataList, class)) { #if there is a raster layer in the the dataList, use it as the template raster
-          tempRas <- sim$dataList[[match("RasterLayer", lapply(sim$dataList, class))]] 
-        } else { #if no data rasters in dataList, use default/set parameters
-          tempRas <- raster::raster(ext=raster::extent(sim$ROI), resolution=sim$res, crs=raster::crs(sim$crs))
+        if(class(dataList[[ii]]) == "RasterLayer") { #if data layer is a RasterLayer
+          
+          fw <- focalWeightRisk(dataList[[ii]], 
+                                type = as.character(tempParams$value[grep("type",tempParams$parameter)]),
+                                a = as.numeric(as.character(tempParams$value[grep("a",tempParams$parameter)])), 
+                                b = as.numeric(as.character(tempParams$value[grep("b",tempParams$parameter)])), 
+                                riskCutoff = as.numeric(as.character(tempParams$value[grep("riskCutoff",
+                                                                                           tempParams$parameter)])))
+          risk <- Cache(raster::focal, dataList[[ii]], w=fw, pad=T, padValue=0)
+          #risk <- risk/max(raster::values(risk), na.rm=T) #  scale to 1 - can remove and scale elsewhere
+          risk <- risk * as.numeric(as.character(tempParams$value[grep("weight",tempParams$parameter)]))
+          #risk <- risk * ifelse(temp$params$direction=="increase", 1, -1) * as.numeric(temp$params$weight)
+          names(risk) <- paste0(names(dataList)[[ii]],"Risk")
+          riskList[[names(risk)]] <- risk
+          
+        } else  if( is(dataList[[ii]], "Spatial") ) { 
+          #if data layer is Spatial*, needs to be rasterized to translate risk
+          if("RasterLayer" %in% lapply(dataList, class)) { 
+            #if there is a raster layer in the the dataList, use it as the template raster
+            tempRas <- dataList[[match("RasterLayer", lapply(dataList, class))]] 
+          } else { #if no data rasters in dataList, use default/set parameters
+            tempRas <- raster::raster(ext=raster::extent(ROI), resolution = res(ROI), crs = crs(ROI))
+          }
+          
+          if(names(dataList[ii]) %in% names(dataList[[ii]])) { 
+            #if name of data layer matches column in dataframe, rasterize that field
+            temp <- Cache(raster::rasterize, dataList[[ii]], tempRas,
+                          field=names(dataList)[[ii]],fun=max, 
+                          background=0)
+          } else { #if name doesn't match, use first column in dataframe
+            temp <- Cache(raster::rasterize, dataList[[ii]], tempRas,
+                          field=names(dataList[[ii]][1]),fun=max, 
+                          background=0)
+          }
+          
+          fw <- focalWeightRisk(temp, 
+                                type = as.character(tempParams$value[grep("type",tempParams$parameter)]),
+                                a = as.numeric(as.character(tempParams$value[grep("a",tempParams$parameter)])), 
+                                b = as.numeric(as.character(tempParams$value[grep("b",tempParams$parameter)])), 
+                                riskCutoff = as.numeric(as.character(tempParams$value[grep("riskCutoff",tempParams$parameter)])))
+          risk <- Cache(raster::focal, temp, w=fw, pad=T, padValue=0)
+          #risk <- risk/max(raster::values(risk), na.rm=T) #  scale to 1 - can remove and scale elsewhere
+          risk <- risk * as.numeric(as.character(tempParams$value[grep("weight",tempParams$parameter)]))
+          names(risk) <- paste0(names(dataList)[[ii]],"Risk")
+          riskList[[names(risk)]] <- risk
+          
         }
-        
-        if(names(sim$dataList[i]) %in% names(sim$dataList[[i]])) { #if name of data layer matches column in dataframe, rasterize that field
-          temp <- Cache(raster::rasterize, sim$dataList[[i]], tempRas,
-                        field=names(sim$dataList)[[i]],fun=max, 
-                        background=0)
-        } else { #if name doesn't match, use first column in dataframe
-          temp <- Cache(raster::rasterize, sim$dataList[[i]], tempRas,
-                        field=names(sim$dataList[[i]][1]),fun=max, 
-                        background=0)
-        }
-        
-        fw <- focalWeightRisk(temp, 
-                              type = as.character(tempParams$value[grep("type",tempParams$parameter)]),
-                              a = as.numeric(as.character(tempParams$value[grep("a",tempParams$parameter)])), 
-                              b = as.numeric(as.character(tempParams$value[grep("b",tempParams$parameter)])), 
-                              riskCutoff = as.numeric(as.character(tempParams$value[grep("riskCutoff",tempParams$parameter)])))
-        risk <- Cache(raster::focal, temp, w=fw, pad=T, padValue=0)
-        #risk <- risk/max(raster::values(risk), na.rm=T) #  scale to 1 - can remove and scale elsewhere
-        risk <- risk * as.numeric(as.character(tempParams$value[grep("weight",tempParams$parameter)]))
-        names(risk) <- paste0(names(sim$dataList)[[i]],"Risk")
-        sim$riskList[[names(risk)]] <- risk
-        
+      } else { #data layer not included in SpeciesRiskParams.csv
+        message(paste0('Message: "', names(dataList[ii]),'" ', 
+                       "not matched in ~/modules/calculateRisk/data/SpeciesRiskParams.csv. ",
+                       'No risk translation completed for "', names(dataList[ii]),'".'))
       }
-    } else { #data layer not included in SpeciesRiskParams.csv
-      message(paste0('Message: "', names(sim$dataList[i]),'" ', "not matched in ~/modules/calculateRisk/data/SpeciesRiskParams.csv. ",
-                     'No risk translation completed for "', names(sim$dataList[i]),'".'))
     }
-  }
+    return(riskList)
+  })
+  
+  names(outList) <- paste(names(sim$dataList), "_risk")
+  sim$riskList <- outList
   
   return(invisible(sim))
 }

@@ -62,7 +62,7 @@ doEvent.selectROI = function(sim, eventTime, eventType, debug = FALSE) {
 ### init event:
 selectROIInit <- function(sim) {
   #This will make input Object into polygons
-  browser()
+
   temp <- vector(mode = "list", length = nrow(sim$ROI))
   for (i in 1:nrow(sim$ROI)) {
     temp[i] <- as(sim$ROI[i], "SpatialPolygons")

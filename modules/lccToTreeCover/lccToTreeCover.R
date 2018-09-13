@@ -27,7 +27,7 @@ defineModule(sim, list(
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = "lccLegend", objectClass = "data.frame", desc = "AAFC 2015 land cover code and label legend", sourceURL = NA),
-    expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data containing 'lcc' dataset", sourceURL = NA)
+    expectsInput(objectName = "dataList", objectClass = "List", desc = "List of lists (each an ROI) of data containing 'lcc' dataset", sourceURL = NA)
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
@@ -61,7 +61,7 @@ doEvent.lccToTreeCover = function(sim, eventTime, eventType, debug = FALSE) {
     },
     reclass = {
       # do stuff for this event
-      sim <- lccToTreeCoverReclassify(sim)
+      sim <- Cache(lccToTreeCoverReclassify, sim)
       
       # schedule future event(s)
       if(is.na(P(sim)$.plotInitialTime)) {
@@ -92,44 +92,58 @@ lccToTreeCoverInit <- function(sim) {
 
 ### plot event:
 lccToTreeCoverPlot <- function(sim) {
-  
-  Plot(sim$dataList[["treeCover"]], title = names(sim$dataList[["treeCover"]]))
-  Plot(sim$dataList[["water"]], addTo = 'sim$dataList[["treeCover"]]')
-  
+  for (i in 1:length(sim$dataList)) {
+    clearPlot()
+    Plot(sim$dataList[[i]][["treeCover"]], title = names(sim$dataList[[i]][["treeCover"]]))
+    Plot(sim$dataList[[i]][["water"]], addTo = 'sim$dataList[[i]][["treeCover"]]', title = "")
+  }
   return(invisible(sim))
 }
 
 ### reclass event: reclassifies lcc to treeCover
 lccToTreeCoverReclassify <- function(sim) {
-  
-  if( "lcc" %in% names(sim$dataListInit) ) {
-    
-    ## classify water layer
-    water <- Cache(raster::setValues, sim$dataList[["lcc"]], ifelse(raster::values(sim$dataList[["lcc"]])!=20, NA, 0))
-    names(water) <- c('water') 
-    quickPlot::setColors(water) <- "lightblue"
-    sim$dataList[["water"]] <- water
-    
-    ## classify treeCover layer
-    temp <- list()
-    for(i in strsplit("Shrubland,Nursery,Forest (undifferentiated),Coniferous,Broadleaf,Mixedwood",split = ",")){
-      temp[i] <- sim$lccLegend$Code[charmatch(i, sim$lccLegend$Label)]
-    }
-    temp.df <- data.frame(sim$lccLegend$Code)
-    temp.df$Reclass <- ifelse(temp.df[,1] %in% temp, 1, 0)
-    treeCover <- Cache(raster::subs, x=sim$dataList[["lcc"]], y=temp.df)
-    treeCover <- Cache(mask, treeCover, sim$dataList[["lcc"]])
-    names(treeCover) <- c('treeCover')
-    
-    sim$dataList[["treeCover"]] <- treeCover
-    sim$dataList[["lcc"]] <- NULL
-  } else { message("lcc dataset doesn't exist in dataListInit. Cannot be reclassified.")  }
-  
+
+  newList <- lapply(1:length(sim$dataList), FUN = lccToTreeCoverlccReclass, dataList = sim$dataList, 
+                   legend = sim$lccLegend)
+
+  names(newList) <- names(sim$dataList)
+  sim$dataList <- newList
   
   return(invisible(sim))
 }
 
+lccToTreeCoverlccReclass <- function(i, dataList, legend){
 
+  if( "lcc" %in% names(dataList[[i]]) ) {
+    #you took Init off sim here. investigate
+    ## classify water layer
+    water <- Cache(raster::setValues, dataList[[i]][["lcc"]], 
+                   ifelse(raster::values(dataList[[i]][["lcc"]])!=20, NA, 0))
+    names(water) <- c('water') 
+    quickPlot::setColors(water) <- "lightblue"
+    dataList[[i]][["water"]] <- water
+    
+    ## classify treeCover layer
+    temp <- list()
+    for(ii in strsplit("Shrubland,Nursery,Forest (undifferentiated),Coniferous,Broadleaf,Mixedwood",split = ",")){
+      temp[ii] <- legend$Code[charmatch(ii, legend$Label)]
+    }
+    
+    temp.df <- data.frame(legend$Code)
+    temp.df$Reclass <- ifelse(temp.df[,1] %in% temp, 1, 0)
+    
+    treeCover <- Cache(raster::subs, x=dataList[[i]][["lcc"]], y=temp.df)
+    treeCover <- Cache(mask, treeCover, dataList[[i]][["lcc"]])
+    names(treeCover) <- c('treeCover')
+    dataList[[i]][["treeCover"]] <- treeCover
+    dataList[[i]][["lcc"]] <- NULL
+    
+  } else { message("no lcc dataset provided for ", names(dataList[i]), ". Cannot be reclassified.")  }
+  
+  return(dataList[[i]])
+  
+}
+  
 .inputObjects <- function(sim) {
   
   ###### import lcc dataset

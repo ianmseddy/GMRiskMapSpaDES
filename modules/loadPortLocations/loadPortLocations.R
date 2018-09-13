@@ -110,7 +110,7 @@ loadPortLocationsFormat <- function(sim) {
 
 
 .inputObjects <- function(sim) {
-  
+
   # create sim$dataListInit if it doesn't exist
   if(is.null(sim$dataListInit)){
     sim$dataListInit <- list()
@@ -118,8 +118,9 @@ loadPortLocationsFormat <- function(sim) {
   
   # import port locations data
   if("lowerMainPorts.kml" %in% list.files(file.path(modulePath(sim),"loadPortLocations","data"))) {
-    #ogrListLayers(file.path(modulePath(sim),"loadPortLocations","data","lowerMainPorts.kml")) # to list layers within .kml file
-    sim$dataListInit[["ports"]] <- rgdal::readOGR(dsn=file.path(modulePath(sim),"loadPortLocations","data","lowerMainPorts.kml"),layer = "lowerMainPorts")
+    #ogrListLayers(file.path(modulePath(sim),"loadPortLocations","data","lowerMainPorts.kml")) #list layers in .kml file
+   
+    sim$dataListInit[["ports"]] <- rgdal::readOGR(dsn=file.path(modulePath(sim),"loadPortLocations","data","lowerMainPorts.kml"),layer = "lowerMainPorts", verbose = FALSE)
   } else {
     stop("loadPortLocations: There is no port location dataset provided") }
   

@@ -13,12 +13,19 @@ setPaths(cachePath = file.path("cache"),
          outputPath = file.path("outputs"))
 paths <- getPaths()
 times <- list(start=1.0, end=10.5, timeunit="year")
-objects <- list() # predefined roi character string
+
+ROIsub <- data.frame(Region = c("VancouverIsland", "LowerMainland"),
+                                             xmn = c(-2040398, -1942000),
+                                             xmx = c(-1948121, -1873500),
+                                             ymn = c(1312569, 1359500),
+                                             ymx = c(1434588, 1420300))
+objects <- list(ROI = ROIsub) # predefined roi character string
 #objects <- list(roi = testROI) # SpatialPolygon roi - script to create testROI object below
 #objects <- list() # no roi - select on map
 
-modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations")#,  
-                #"selectROI", "calculateRisk","combineRisk","leafletRiskMap", "trapsReportPDF" ,"loadLcc2015",  "lccToTreeCover")
+modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
+                #"selectROI","combineRisk","leafletRiskMap", "trapsReportPDF",  
+                "loadLcc2015", "lccToTreeCover", "calculateRisk")
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
@@ -26,10 +33,10 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                    cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0",
                                             res = 30,
                                             .plotInitialTime = 1, 
-                                            usePlot = TRUE)#,
-                   # lccToTreeCover = list(.plotInitialTime = 1),
-                   # calculateRisk = list(species = "GypsyMoth",
-                   #                      .plotInitialTime = 1),
+                                            usePlot = FALSE), 
+                   lccToTreeCover = list(.plotInitialTime = 1),
+                   calculateRisk = list(species = "GypsyMoth",
+                                        .plotInitialTime = 1)
                    # combineRisk = list(.plotInitialTime = 1, 
                    #                    hiRisk1 = 0.5,
                    #                    hiRisk2 = 10, 
@@ -65,7 +72,7 @@ mySim <- simInit(params = parameters,
 graphics.off() 
 windows(xpos=1940,ypos=10,width=21,height=11,xpinch = 114, ypinch = 114)
 #quartz(w=6,h=6)
-
+dev(width = 6, height = 6)
 clearPlot()
 
 mySim1 <- spades(mySim, debug=TRUE) 

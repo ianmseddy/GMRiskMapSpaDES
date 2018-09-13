@@ -93,7 +93,7 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 cropReprojectDataInit <- function(sim) {
- 
+  
   temp <- vector(mode = "list", length = nrow(sim$ROI))
   vars <- c("xmn", "xmx", "ymn", "ymx")
   
@@ -122,34 +122,35 @@ cropReprojectDataInit <- function(sim) {
 # }
 
 cropReprojectDataPlot <- function(sim) {
-  
-  #Make sure that dataList is formatted correctly. Then, decide how to do this...
-  for (i in 1: length(sim$dataList)) {
-    tempSim <- sim$dataList[[i]]
-    print(paste("plotting ", names(sim$dataList[i]), sep = ""))
-    for( ii in 1:length(names(tempSim))) {
-      
-      #if only one point in data, corner points added for plotting (Plot() fails with only 1 point)
-      if( is(tempSim[[ii]], "SpatialPointsDataFrame") && length(tempSim[[ii]])==1 ) {
-        message("cropReprojectData: '", i, "' in dataList only has 1 point. ROI corner points added to map for reference.")
-        corners <- data.frame(coords.x1 = c(xmin(sim$ROI[i]), xmin(sim$ROI[i]), xmax(sim$ROI[i]), xmax(sim$ROI[i])),
-                              coords.x2 = c(ymin(sim$ROI[i]), ymax(sim$ROI[i]), ymin(sim$ROI[i]), ymax(sim$ROI[i])),
-                              ID = c("SW", "NW", "SE", "NE"))
-        coordinates(corners) <- ~coords.x1+coords.x2
-        crs(corners) <- crs(mySim$crs)
+  if (P(sim)$usePlot == TRUE) {
+    #Make sure that dataList is formatted correctly. Then, decide how to do this...
+    for (i in 1: length(sim$dataList)) {
+      tempSim <- sim$dataList[[i]]
+      print(paste("plotting ", names(sim$dataList[i]), sep = ""))
+      for( ii in 1:length(names(tempSim))) {
         
-        tempdf <- plyr::rbind.fill(data.frame(tempSim[[ii]]), data.frame(corners))
-        coordinates(tempdf) <- ~coords.x1+coords.x2
-        crs(tempdf) <- P(sim)$crs
-        tempdf$col <- ifelse(is.na(tempdf[[ii]]), "white", "black")
-        tempSim[[ii]] <- tempdf
+        #if only one point in data, corner points added for plotting (Plot() fails with only 1 point)
+        if( is(tempSim[[ii]], "SpatialPointsDataFrame") && length(tempSim[[ii]])==1 ) {
+          message("cropReprojectData: '", i, "' in dataList only has 1 point. ROI corner points added to map for reference.")
+          corners <- data.frame(coords.x1 = c(xmin(sim$ROI[i]), xmin(sim$ROI[i]), xmax(sim$ROI[i]), xmax(sim$ROI[i])),
+                                coords.x2 = c(ymin(sim$ROI[i]), ymax(sim$ROI[i]), ymin(sim$ROI[i]), ymax(sim$ROI[i])),
+                                ID = c("SW", "NW", "SE", "NE"))
+          coordinates(corners) <- ~coords.x1+coords.x2
+          crs(corners) <- crs(mySim$crs)
+          
+          tempdf <- plyr::rbind.fill(data.frame(tempSim[[ii]]), data.frame(corners))
+          coordinates(tempdf) <- ~coords.x1+coords.x2
+          crs(tempdf) <- P(sim)$crs
+          tempdf$col <- ifelse(is.na(tempdf[[ii]]), "white", "black")
+          tempSim[[ii]] <- tempdf
+        }
       }
+      
+      clearPlot()
+      Plot(tempSim)
+      Sys.sleep(3)#this will write ROI to every plot
     }
-    
-    clearPlot()
-    Plot(tempSim) #this will write ROI to every plot
   }
-
   return(invisible(sim))
 }
 
@@ -164,7 +165,7 @@ cropReprojectDataGIS <- function(sim) {
     
     subList <- lapply(subIndex, FUN = function(ii, x = region, ...){
      
-      file <- files[ii] # I do this instead of lapplying over files directly so I can preserve names for file output
+      file <- files[ii] # necessary to preserve names for file output
       
       output <- Cache(postProcess, x = file[[1]], rasterToMatch = x[[1]], 
                       filename2 = paste(dir,"/", names(file), "_", names(x), sep = ""))
@@ -172,7 +173,7 @@ cropReprojectDataGIS <- function(sim) {
       if (class(output) == "SpatialPointsDataFrame") {
         output@bbox <- raster::as.matrix(extent(x[[1]]))
       } else if (is.null(output)) {
-        print(paste("no ", names(file), " in ", names(x), sep = ""))#class is null. It will be removed later  
+          cat(crayon::bgGreen$bold("no ", names(file), " in ", names(x), sep = ""))#class is null. It will be removed later  
       } else if (class(output) == "RasterLayer") {
         extent(output) <- extent(x = x[[1]])
       }

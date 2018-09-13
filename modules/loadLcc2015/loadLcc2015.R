@@ -108,11 +108,6 @@ loadLcc2015Format <- function(sim) {
 
 .inputObjects = function(sim) {
   
-  # create sim$dataListInit if it doesn't exist
-  if(is.null(sim$dataListInit)){
-    sim$dataListInit <- list()
-  }
-  
   # import lcc dataset
   if("ACGEO_2015_CI_BC_30m_v1_crop.tif" %in% list.files(file.path(modulePath(sim),"loadLcc2015","data"))) {
     sim$dataListInit[["lcc"]] <- raster::raster(file.path(modulePath(sim),"loadLcc2015","data","ACGEO_2015_CI_BC_30m_v1_crop.tif"))
