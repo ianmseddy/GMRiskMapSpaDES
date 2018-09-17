@@ -70,12 +70,8 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
     },
     combine = {
       # do stuff for this event
-      sim <- combineRiskCombine(sim)
-      if(P(sim)$mapHiRisk == FALSE){
-        sim$highRisk <- NULL
-      }else{
-        sim <- makeHighRisk(sim)
-      }
+      sim <- Cache(combineRiskCombine, sim, userTags = "combineRiskCombine")
+      
       # schedule future event(s)
          # schedule first 'plot' event
       if(is.na(P(sim)$.plotInitialTime)) {
@@ -102,42 +98,63 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### plot event:
 combineRiskPlot <- function(sim) {
-  
-  Plot(sim$totalRisk, title = names(sim$totalRisk), cols=rev(heat.colors(16))) #legendRange = 0:1
-  if("water" %in% names(sim$dataList)) { #if water is a layer in dataList, add to risk maps
-    Plot(sim$dataList[["water"]], addTo="sim$totalRisk")
-  }
-  
+  for (i in 1:length(sim$totalRisk)) {
+    clearPlot()
+    Plot(sim$totalRisk[i], title = names(sim$totalRisk[i]), cols=rev(heat.colors(16))) #legendRange = 0:1
+    if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
+      Plot(sim$dataList[[i]][["water"]], addTo= names(sim$totalRisk[i]))
+      }
+    }   
   return(invisible(sim))
 }
 
 ### combine event: combining riskList rasters
 combineRiskCombine <- function(sim) {
+  sim$highRisk <- NULL #will be null by default
   
+  outList <- lapply(1:length(sim$riskList), FUN = function(i, riskList = sim$riskList){
+    riskList = riskList[[i]]
+    if(length(riskList) == 1) { #if only one risk layer, then it is totalRisk
+      totalRisk <- riskList[[1]]
+    } else {  # if more than one layer, add risk layers together
+      riskStack <- raster::stack(riskList)
+      totalRisk <- sum(riskStack, na.rm=TRUE) } 
+    totalRisk[totalRisk<0] <- 0 # if risk values below 0, set to 0
+    #totalRisk <- totalRisk/max(raster::values(totalRisk), na.rm=TRUE) # scale values to 1 using max risk value
+    names(totalRisk) <- c("totalRisk")
+    return(totalRisk)
+  })
+  names(outList) <- paste(names(sim$dataList))
+  sim$totalRisk <- outList
   
-  if(length(sim$riskList) == 1) { #if only one risk layer, then it is totalRisk
-    totalRisk <- sim$riskList[[1]]
-  } else {  # if more than one layer, add risk layers together
-    riskStack <- raster::stack(sim$riskList)
-    totalRisk <- sum(riskStack, na.rm=TRUE) } 
-  totalRisk[totalRisk<0] <- 0 # if risk values below 0, set to 0
-  #totalRisk <- totalRisk/max(raster::values(totalRisk), na.rm=TRUE) # scale values to 1 using max risk value
-  names(totalRisk) <- c("totalRisk")
-  sim$totalRisk <- totalRisk
-  
-  return(invisible(sim))
+  #Map Hi Risk
+  if (P(sim)$mapHiRisk == TRUE) {
+    highRisk = vector(mode = "list", length = length(sim$totalRisk))
+    for(i in 1:length(sim$totalRisk)) {
+      
+      tempRisk <- sim$totalRisk[[i]]
+      if (!P(sim)$hiRisk2 < max(values(tempRisk))) {
+        cat(crayon::cyan("The hi risk cut-off is higher than any values found in ", names(sim$dataList[i])))
+        highRisk[[i]] <- Cache(raster::reclassify,tempRisk, 
+                                            matrix(c(0, P(sim)$hiRisk1, NA, 
+                                                     P(sim)$hiRisk1, P(sim)$hiRisk2, 1 ,
+                                                     P(sim)$hiRisk2, P(sim)$hiRisk2, 2),
+                                                   ncol=3, byrow=T),
+                                            include.lowest=TRUE)
+      } else {
+        highRisk[[i]] <- Cache(raster::reclassify, tempRisk, 
+                                            matrix(c(0, P(sim)$hiRisk1, NA, 
+                                                     P(sim)$hiRisk1, P(sim)$hiRisk2, 1 ,
+                                                     P(sim)$hiRisk2, max(values(tempRisk)), 2),
+                                                   ncol=3, byrow=T),
+                                            include.lowest=TRUE)
+      }
+    }
+    
+    sim$highRisk <- highRisk
   }
-
-makeHighRisk <- function(sim){
-  highRisk <- raster::reclassify(sim$totalRisk, matrix(c(0, P(sim)$hiRisk1, NA,
-                                                         P(sim)$hiRisk1, P(sim)$hiRisk2, 1 ,
-                                                         P(sim)$hiRisk2, max(values(sim$totalRisk)), 2  ), 
-                                                       ncol=3, byrow=T), 
-                                 include.lowest=TRUE)
-  sim$highRisk <- highRisk
-return(sim)
+  return(invisible(sim))
 }
-
 
 #.inputObjects <- function(sim) {
 

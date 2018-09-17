@@ -15,10 +15,11 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.txt", "leafletRiskMap.Rmd"),
-  reqdPkgs = list("leaflet", "raster", "sp", "curl", "htmlwidgets", "pander"), #curl package to check internet connection
+  reqdPkgs = list("leaflet", "raster", "sp", "curl", "htmlwidgets", "pander", "fastshp"), #curl package to check internet connection
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
-    defineParameter("fileName", "character", "leafletMap", NA, NA, "File name the html map will be saved as in 'outputs' directory"),
+    defineParameter("fileName", "character", "leafletMap", NA, NA, "File name(s) for output html map(s). Will overwrite. 
+                    Length should equal length of ROIs"),
     defineParameter("basemap", "character", "satellite", NA, NA, "Basemap of leaflet risk map. Options: satellite, roadmap, hybrid, terrain"),
     defineParameter("mapRisk", "logical", FALSE, NA, NA, "Logical of whether to map totalRisk on leaflet map"),
     defineParameter("mapHiRisk", "logical", TRUE, NA, NA, "Logical of whether to map hiRisk on leaflet map"),
@@ -32,7 +33,7 @@ defineModule(sim, list(
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
-    expectsInput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS"),
+    expectsInput(objectName = "ROI", objectClass = "list", desc = "list of rasters defining region(s) of interest (ROI)"),
     expectsInput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk"),
     expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data rasters", sourceURL = NA),
     expectsInput(objectName = "riskList", objectClass = "List", desc = "List of risk rasters", sourceURL = NA), 
@@ -64,33 +65,20 @@ doEvent.leafletRiskMap = function(sim, eventTime, eventType, debug = FALSE) {
     checkinputs = {
       # schedule future event(s)
       ## checking if inputs exist yet - all possible combinations of dataLayers, riskLayers & totalRisk/HiRisk
-      if(!is.na(P(sim)$dataLayers) && !is.null(sim$dataList) &&  # all 3
-         !is.na(P(sim)$riskLayers) && !is.null(sim$riskList) && 
-         (P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) && !is.null(sim$totalRisk)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if(!is.na(P(sim)$dataLayers) && !is.null(sim$dataList) &&  # 1 - dataLayers
-                is.na(P(sim)$riskLayers) && (P(sim)$mapRisk == FALSE && P(sim)$mapHiRisk == FALSE)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if( !is.na(P(sim)$riskLayers) && !is.null(sim$riskList) &&  # 1 - riskLayers
-                 is.na(P(sim)$dataLayers) && (P(sim)$mapRisk == FALSE && P(sim)$mapHiRisk == FALSE)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if((P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) &&  # 1 - totalRisk/HiRisk
-                !is.null(sim$totalRisk) && is.na(P(sim)$dataLayers) && is.na(P(sim)$riskLayers)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if(!is.na(P(sim)$dataLayers) && !is.null(sim$dataList) &&  # 2 - dataLayers & riskLayers
-                !is.na(P(sim)$riskLayers) && !is.null(sim$riskList) && 
-                (P(sim)$mapRisk == FALSE && P(sim)$mapHiRisk == FALSE)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if(!is.na(P(sim)$dataLayers) && !is.null(sim$dataList) # 2 - dataLayers & totalRisk/HiRisk
-                && is.na(P(sim)$riskLayers) && 
-                (P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) && !is.null(sim$totalRisk)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if(!is.na(P(sim)$riskLayers) && !is.null(sim$riskList) # 2 - riskLayers & totalRisk/HiRisk
-                && is.na(P(sim)$dataLayers) 
-                && (P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) && !is.null(sim$totalRisk)) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else { sim <- scheduleEvent(sim, time(sim)+0.1, "leafletRiskMap", "checkinputs", .last()) } # not all inputs available yet
+      hasData <- !is.null(sim$dataList)
+      hasRisk <- !is.null(sim$riskList) || !is.null(sim$totalRisk)
+      needsData <- !is.na(P(sim)$dataLayers)
+      needsRisk <- P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE
+      #sim will always have data and risk layers if it has totalRisk
       
+      if (needsData && hasData && needsRisk && hasRisk) {
+        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
+      } else if (!needsData && !needsRisk) {
+        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap")
+      } else if (needsData && hasData && !needsRisk) { #doesn't need risk
+        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
+      } else { sim <- scheduleEvent(sim, time(sim)+0.1, "leafletRiskMap", "checkinputs", .last()) } # inputs not all available
+    
       
     },
     basemap = {
@@ -151,39 +139,60 @@ doEvent.leafletRiskMap = function(sim, eventTime, eventType, debug = FALSE) {
 ### init event:
 leafletRiskMapInit <- function(sim) {
   
-  sim$leafletMap <- leaflet::leaflet() # create leaflet map template
-  
+  output <- lapply(1:length(sim$ROI), FUN = function(i) {
+    x <- leaflet::leaflet() # create leaflet map template
+    return(x)
+  })
+  names(output) <- names(sim$ROI)
+  sim$leafletMap <- output
   return(invisible(sim))
 }
 
 ### plot event:
 leafletRiskMapPlot <- function(sim) {
   
+  for (i in 1:length(sim$leafletMap)) {
     # save leafletMap as html file to outputs folder
-  saveWidget(sim$leafletMap, file=file.path(outputPath(sim),paste0(P(sim)$fileName, ".html")), selfcontained=FALSE)
-    # open saved leafletMap in browser window
-  pander::openFileInOS(file.path(outputPath(sim),paste0(P(sim)$fileName, ".html")))
-
+    
+    saveWidget(sim$leafletMap[[i]], file = file.path(outputPath(sim),paste0(P(sim)$fileName[i], ".html")), selfcontained=FALSE)
+    
+  # open saved leafletMap in browser window
+  pander::openFileInOS(file.path(outputPath(sim),paste0(P(sim)$fileName[i], ".html")))
+  }
   return(invisible(sim))
 }
 
 
 ### basemap event:
 leafletRiskMapBasemap <- function(sim) {
+
+  output <- Cache(lapply, 1:length(sim$ROI), function(i, 
+                                         leafletMap = sim$leafletMap, 
+                                         ROI = sim$ROI,
+                                         basemap = P(sim)$basemap){
+    #subset files by ROI
+    ROI = ROI[[i]]
+    leafletMap <- leafletMap[[i]]
+    
+    ext <- raster::extent(raster::projectExtent(ROI, crs="+proj=longlat +datum=WGS84"))
+    leafletMap <- leaflet::fitBounds(leafletMap, lng1=ext[1], lat1=ext[3], lng2=ext[2], lat2=ext[4])
+    
+    #if(curl::has_internet() == FALSE) {
+    #  message("leafletRiskMap: No internet connection. Basemap not loaded to leafletMap.")
+    #}
+    
+    switch(basemap,
+           satellite = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldImagery") },
+           roadmap = {  leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldStreetMap") },
+           hybrid = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldImagery")
+           leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldTopoMap", 
+                                                       options = providerTileOptions(opacity = 0.75)) },
+           terrain = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Stamen.Terrain") })
+    return(leafletMap)
+  })
   
-  ext <- raster::extent(raster::projectExtent(sim$ROI, crs="+proj=longlat +datum=WGS84"))
-  sim$leafletMap <- leaflet::fitBounds(sim$leafletMap, lng1=ext[1], lat1=ext[3], lng2=ext[2], lat2=ext[4])
-  
-  #if(curl::has_internet() == FALSE) {
-  #  message("leafletRiskMap: No internet connection. Basemap not loaded to leafletMap.")
-  #}
-  
-  switch(P(sim)$basemap,
-         satellite = { sim$leafletMap <- leaflet::addProviderTiles(sim$leafletMap, "Esri.WorldImagery") },
-         roadmap = {  sim$leafletMap <- leaflet::addProviderTiles(sim$leafletMap, "Esri.WorldStreetMap") },
-         hybrid = { sim$leafletMap <- leaflet::addProviderTiles(sim$leafletMap, "Esri.WorldImagery")
-         sim$leafletMap <- leaflet::addProviderTiles(sim$leafletMap, "Esri.WorldTopoMap", options = providerTileOptions(opacity = 0.75)) },
-         terrain = { sim$leafletMap <- leaflet::addProviderTiles(sim$leafletMap, "Stamen.Terrain") })
+  names(output) <- paste(names(sim$ROI), "_leafletMap")
+  sim$leafletMap <- output
   
   return(invisible(sim))
 }
@@ -191,29 +200,59 @@ leafletRiskMapBasemap <- function(sim) {
 ### maptotalrisk event:
 leafletRiskMapLeafTotalRisk <- function(sim) {
   
-  totalRiskLeaflet <- leaflet::projectRasterForLeaflet(sim$totalRisk, method = "bilinear")
-  totalRiskLeaflet[totalRiskLeaflet<=0] <- NA
-  if("water" %in% names(sim$dataList)) {
-    waterLeaflet <- leaflet::projectRasterForLeaflet(sim$dataList$water, method = "bilinear")
-    totalRiskLeaflet <- raster::mask(totalRiskLeaflet, waterLeaflet, inverse=TRUE)
-  }
   
-  sim$leafletMap <- leaflet::addRasterImage(sim$leafletMap, totalRiskLeaflet, colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
+  output <- Cache(lapply, 1:length(sim$ROI), function(i, 
+                                                     totalRisk = sim$totalRisk,
+                                                     dataList = sim$dataList,
+                                                     leafletMap = sim$leafletMap){
+    #subset all Input files by ROI
+    totalRisk <- totalRisk[[i]]
+    dataList <- dataList[[i]]
+    leafletMap <- leafletMap[[i]]
+    #map total Risk
+    totalRiskLeaflet <- leaflet::projectRasterForLeaflet(totalRisk, method = "bilinear")
+    totalRiskLeaflet[totalRiskLeaflet<=0] <- NA
+    if("water" %in% names(dataList)) {
+      waterLeaflet <- leaflet::projectRasterForLeaflet(dataList$water, method = "bilinear")
+      totalRiskLeaflet <- raster::mask(totalRiskLeaflet, waterLeaflet, inverse=TRUE)
+    }
+    
+    leafletMap <- leaflet::addRasterImage(leafletMap, totalRiskLeaflet, 
+                                              colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
+    return(leafletMap)  
+  })
+  
+  names(output) <- paste(names(sim$ROI), "_leafletMap")
+  sim$leafletMap <- output
   
   return(invisible(sim))
 }
 
 ### maphirisk event:
 leafletRiskMapLeafHiRisk <- function(sim) {
- 
-  highRiskLeaflet <- leaflet::projectRasterForLeaflet(sim$highRisk, method = "bilinear")
-  highRiskLeaflet[highRiskLeaflet<=0] <- NA
-  if("water" %in% names(sim$dataList)) {
-    waterLeaflet <- leaflet::projectRasterForLeaflet(sim$dataList$water, method = "bilinear")
-    highRiskLeaflet <- raster::mask(highRiskLeaflet, waterLeaflet, inverse=TRUE)
-  }
-  sim$leafletMap <- leaflet::addRasterImage(sim$leafletMap, highRiskLeaflet,
-                                            colors = "Spectral", opacity = 0.3,project=FALSE)
+  
+  output <- Cache(lapply, 1:length(sim$ROI), function(i,
+                                                     leafletMap = sim$leafletMap, 
+                                                     dataList = sim$dataList,
+                                                     highRisk = sim$highRisk) {
+    #Subset all input files by ROI
+    leafletMap = leafletMap[[i]]
+    dataList = dataList[[i]]
+    highRisk = highRisk[[i]]
+    #Map high Risk
+    highRiskLeaflet <- leaflet::projectRasterForLeaflet(highRisk, method = "bilinear")
+    highRiskLeaflet[highRiskLeaflet<=0] <- NA
+    if("water" %in% names(dataList)) {
+      waterLeaflet <- leaflet::projectRasterForLeaflet(dataList$water, method = "bilinear")
+      highRiskLeaflet <- raster::mask(highRiskLeaflet, waterLeaflet, inverse=TRUE)
+    }
+    leafletMap <- leaflet::addRasterImage(leafletMap, highRiskLeaflet,
+                                              colors = "Spectral", opacity = 0.3,project=FALSE)
+    return(leafletMap)
+  })
+  
+  names(output) <- paste(names(sim$ROI), "_leafletMap")
+  sim$leafletMap <- output
   
   return(invisible(sim))
 }
@@ -221,81 +260,99 @@ leafletRiskMapLeafHiRisk <- function(sim) {
 
 ### maprisk event:
 leafletRiskMapLeafRisk  <- function(sim) {
-
-  for(i in 1:length(P(sim)$riskLayers)) {
-    temp <- leaflet::projectRasterForLeaflet(sim$riskList[[P(sim)$riskLayers[[i]]]], method = "bilinear")
-    if("water" %in% names(sim$dataList)) {
-      waterLeaflet <- leaflet::projectRasterForLeaflet(sim$dataList$water, method = "bilinear")
-      temp <- raster::mask(temp, waterLeaflet, inverse=TRUE)
-    }
-    sim$leafletMap <- leaflet::addRasterImage(sim$leafletMap, temp, 
-                                              colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
+  
+  output <- lapply(1:length(sim$ROI), FUN = function(i, 
+                                                     riskLayers = P(sim)$riskLayers,
+                                                     dataList = sim$dataList,
+                                                     leafletMap = sim$leafletMap,
+                                                     riskList = sim$riskList) {
     
-  }  
+    #subset all input files
+    riskLayers = riskLayers
+    dataList = dataList[[i]]
+    leafletMap = leafletMap[[i]]
+    riskList = riskList[[i]]
+    #Map risk for each ROI
+    for(ii in 1:length(riskLayers)) {
+      temp <- leaflet::projectRasterForLeaflet(riskList[[riskLayers[[ii]]]], method = "bilinear")
+      if("water" %in% names(dataList)) {
+        waterLeaflet <- leaflet::projectRasterForLeaflet(dataList$water, method = "bilinear")
+        temp <- raster::mask(temp, waterLeaflet, inverse=TRUE)
+      }
+      leafletMap <- leaflet::addRasterImage(leafletMap, temp, 
+                                                colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
+    }
+  return(leafletMap)
+  })
+  
+  names(output) <- paste(names(sim$ROI), "_leafletMap")
+  sim$leafletMap <- output
+  
   return(invisible(sim))
 }
 
-install.packages("fastshp")
+
 ### mapdata event:
 leafletRiskMapLeafData <- function(sim) {
-  
-  for(i in 1:length(P(sim)$dataLayers)) {
+  #################
+  for (i in 1:length(sim$dataList)) {  
+    dataList <- sim$dataList[[i]]
     
-    if( is(sim$dataList[[P(sim)$dataLayers[[i]]]], "Spatial") ) {
+    for(ii in 1:length(P(sim)$dataLayers)) {
       
-      temp <- sp::spTransform(sim$dataList[[P(sim)$dataLayers[[i]]]], CRSobj=sp::CRS("+proj=longlat +datum=WGS84"))
-      if( P(sim)$dataLayers[[i]] %in% names(temp) ) { #if name of data layer matches column in dataframe
-        temp <- temp[,c(which(names(temp)==P(sim)$dataLayers[[i]]),which(names(temp)!=P(sim)$dataLayers[[i]]))]
-        popup <- c()
-        for(k in 1:length(temp)) {
-          pop <- c()
-          for(j in 1:length(names(temp))) {
-            x <- paste0(names(temp)[[j]], ": ",temp[[j]][[k]])
-            pop <- paste(pop,x, sep="<BR>")
+      if( is(dataList[[P(sim)$dataLayers[[ii]]]], "Spatial") ) {
+        
+        temp <- sp::spTransform(dataList[[P(sim)$dataLayers[[ii]]]], CRSobj=sp::CRS("+proj=longlat +datum=WGS84"))
+        
+        if( P(sim)$dataLayers[[ii]] %in% names(temp) ) { #if name of data layer matches column in dataframe
+          temp <- temp[,c(which(names(temp)==P(sim)$dataLayers[[ii]]),which(names(temp)!=P(sim)$dataLayers[[ii]]))]
+          popup <- c()
+          for(k in 1:length(temp)) {
+            pop <- c()
+            for(j in 1:length(names(temp))) {
+              x <- paste0(names(temp)[[j]], ": ",temp[[j]][[k]])
+              
+              pop <- paste(pop,x, sep="<BR>")
+            }
+            popup <- c(popup, pop)
           }
-          popup <- c(popup, pop)
+         
+          temp$popup <- popup
+          
+          temp$col <- as.factor(temp[[P(sim)$dataLayers[[ii]]]])
+          temp$colour <- temp$col
         }
-        temp$popup <- popup  
-        temp$col <- as.factor(temp[[P(sim)$dataLayers[[i]]]])
-        temp$colour <- temp$col
-      } else {  #if name doesn't match, use first column in dataframe
-        popup <- c()
-        for(k in 1:length(temp)) {
-          pop <- paste0(P(sim)$dataLayers[[i]])
-          for(j in 1:length(names(temp))) {
-            x <- paste0(names(temp)[[j]], ": ",temp[[j]][[k]])
-            pop <- paste(pop,x, sep="<BR>")
-          }
-          popup <- c(popup, pop)
+       
+        levels(temp$colour) <- c(levels(temp$col), rainbow(n = length(levels(temp$col)), start = 0, end = 3/6))
+        for( j in 1:length(levels(temp$col)) ) {
+          temp$colour[temp$colour == levels(temp$col)[j]] <- rev(rainbow(n = length(levels(temp$col)), start = 0, end = 3/6))[j]
         }
-        temp$popup <- popup  
-        temp$col <- as.factor(temp[[1]])
-        temp$colour <- temp$col
+        temp$col <- NULL
+        
+        dataClass <- class(dataList[[P(sim)$dataLayers[[ii]]]])
+        switch(
+          dataClass,
+          SpatialPointsDataFrame = { sim$leafletMap[[i]] <- leafletSpatialPoints(inList = sim$leafletMap[[i]], temp) },
+          SpatialPolygonsDataFrame = { sim$leafletMap[[i]] <- leafletSpatialPolygons(inList = sim$leafletMap[[i]], temp) },
+          SpatialLinesDataFrame = { sim$leafletMap[[i]] <- leafletSpatialLines(inList = sim$leafletMap[[i]], temp) },
+          warning(paste0("leafletRiskMap: '", 
+                         P(sim)$dataLayers[[ii]], 
+                         "' in dataLayers not added to leafletMap. Spatial class '", 
+                         class(dataList[[P(sim)$dataLayers[[ii]]]]), 
+                         "' not defined in mapdata event."))
+        )
+        
+      } else if( is(dataList[[P(sim)$dataLayers[[ii]]]], "Raster") ) {
+        
+        temp <- leaflet::projectRasterForLeaflet(dataList[[P(sim)$dataLayers[[ii]]]], method = "bilinear")
+        sim$leafletMap[[i]] <- leafletRaster(inList = sim$leafletMap[[i]], temp, dataList = sim$dataList[[i]])
+        
+      } else {
+        warning(paste0("leafletRiskMap: '", P(sim)$dataLayers[[ii]], 
+                       "' in dataLayers not added to leafletMap. Class '", 
+                       class(dataList[[P(sim)$dataLayers[[ii]]]]),
+                       "' not defined in mapdata event."))
       }
-      levels(temp$colour) <- c(levels(temp$col), rainbow(n = length(levels(temp$col)), start = 0, end = 3/6))
-      for( j in 1:length(levels(temp$col)) ) {
-        temp$colour[temp$colour == levels(temp$col)[j]] <- rev(rainbow(n = length(levels(temp$col)), start = 0, end = 3/6))[j]
-      }
-      temp$col <- NULL
-      
-      dataClass <- class(sim$dataList[[P(sim)$dataLayers[[i]]]])
-      switch(
-        dataClass,
-        SpatialPointsDataFrame = { sim <- leafletSpatialPoints(sim, temp) },
-        SpatialPolygonsDataFrame = { sim <- leafletSpatialPolygons(sim, temp) },
-        SpatialLinesDataFrame = { sim <- leafletSpatialLines(sim, temp) },
-        warning(paste0("leafletRiskMap: '", P(sim)$dataLayers[[i]], "' in dataLayers not added to leafletMap. Spatial class '", 
-                       class(sim$dataList[[P(sim)$dataLayers[[i]]]]), "' not defined in mapdata event."))
-      )
-      
-    } else if( is(sim$dataList[[P(sim)$dataLayers[[i]]]], "Raster") ) {
-      
-      temp <- leaflet::projectRasterForLeaflet(sim$dataList[[P(sim)$dataLayers[[i]]]], method = "bilinear")
-      sim <- leafletRaster(sim, temp)
-      
-    } else {
-      warning(paste0("leafletRiskMap: '", P(sim)$dataLayers[[i]], "' in dataLayers not added to leafletMap. Class '", 
-                     class(sim$dataList[[P(sim)$dataLayers[[i]]]]), "' not defined in mapdata event."))
     }
   }
   return(invisible(sim))
@@ -304,45 +361,45 @@ leafletRiskMapLeafData <- function(sim) {
 ## additional functions: used in leafletRiskMapLeafData function
 
 # adding SpatialPoints data to leaflet map
-leafletSpatialPoints <- function(sim, temp) {
+leafletSpatialPoints <- function(inList, temp) {
   
-  sim$leafletMap <- leaflet::addCircles(sim$leafletMap, lng = sp::coordinates(temp)[,1], lat = sp::coordinates(temp)[,2], 
+  inList <- leaflet::addCircles(inList, lng = sp::coordinates(temp)[,1], lat = sp::coordinates(temp)[,2], 
                                         opacity = 1, popup = temp$popup, color = temp$colour)
-  return(sim)
+  return(inList)
 }
 
 # adding SpatialPolygons data to leaflet map
-leafletSpatialPolygons <- function(sim, temp) {
+leafletSpatialPolygons <- function(inList, temp) {
   
   for(k in 1:length(temp@polygons)) {
-    sim$leafletMap <- leaflet::addPolygons(sim$leafletMap, weight=2,
+    inList <- leaflet::addPolygons(inList, weight=2,
                                            lng = c(temp@polygons[[k]]@Polygons[[1]]@coords[,1]),
                                            lat = c(temp@polygons[[k]]@Polygons[[1]]@coords[,2]),
                                            opacity = 1, popup = temp$popup[[k]], color = temp$colour[[k]])
   } 
-  return(sim)
+  return(inList)
 }
 
 # adding SpatialLines data to leaflet map
-leafletSpatialLines <- function(sim, temp) {
+leafletSpatialLines <- function(inList, temp) {
   
   for(k in 1:length(temp@lines)) {
-    sim$leafletMap <- leaflet::addPolylines(sim$leafletMap, weight=2,
+    inList <- leaflet::addPolylines(inList, weight=2,
                                             lng = c(temp@lines[[k]]@Lines[[1]]@coords[,1]),
                                             lat = c(temp@lines[[k]]@Lines[[1]]@coords[,2]),
                                             opacity = 1, popup = temp$popup[[k]], color = temp$colour[[k]])
   } 
-  return(sim)
+  return(inList)
 }
 
 # adding raster data to leaflet map
-leafletRaster <- function(sim, temp) {
-  if("water" %in% names(sim$dataList)) {
+leafletRaster <- function(inList, temp, dataList) {
+  if("water" %in% names(dataList)) {
     waterLeaflet <- leaflet::projectRasterForLeaflet(sim$dataList$water, method = "bilinear")
     temp <- raster::mask(temp, waterLeaflet, inverse=TRUE)
   }
-  sim$leafletMap <- leaflet::addRasterImage(sim$leafletMap, temp, colors=rev(topo.colors(16)), opacity=0.35, project=FALSE)
-  return(sim)
+  inList <- leaflet::addRasterImage(inList, temp, colors=rev(topo.colors(16)), opacity=0.35, project=FALSE)
+  return(inList)
 }
 
 

@@ -14,7 +14,7 @@ setPaths(cachePath = file.path("cache"),
 paths <- getPaths()
 times <- list(start=1.0, end=10.5, timeunit="year")
 
-ROIsub <- data.frame(Region = c("VancouverIsland", "LowerMainland"),
+ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),
                                              xmn = c(-2040398, -1942000),
                                              xmx = c(-1948121, -1873500),
                                              ymn = c(1312569, 1359500),
@@ -24,8 +24,8 @@ objects <- list(ROI = ROIsub) # predefined roi character string
 #objects <- list() # no roi - select on map
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
-                #"selectROI","combineRisk","leafletRiskMap", "trapsReportPDF",  
-                "loadLcc2015", "lccToTreeCover", "calculateRisk")
+                #"selectROI",, "trapsReportPDF",  
+                "combineRisk", "loadLcc2015", "lccToTreeCover", "calculateRisk", "leafletRiskMap")
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                    loadGMTraps = list(.plotInitialTime = 1),
@@ -33,20 +33,21 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                    cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0",
                                             res = 30,
                                             .plotInitialTime = 1, 
-                                            usePlot = FALSE), 
-                   lccToTreeCover = list(.plotInitialTime = 1),
+                                            usePlot = TRUE), 
+                   lccToTreeCover = list(.plotInitialTime = 10),
                    calculateRisk = list(species = "GypsyMoth",
-                                        .plotInitialTime = 1)
-                   # combineRisk = list(.plotInitialTime = 1, 
-                   #                    hiRisk1 = 0.5,
-                   #                    hiRisk2 = 10, 
-                   #                    mapHiRisk = TRUE),
-                   # leafletRiskMap = list(basemap = "satellite",
-                   #                       mapRisk = TRUE,
-                   #                       mapHiRisk = TRUE,
-                   #                       dataLayers = list("traps"),
-                   #                       riskLayers = list("trapsRisk"), #IE commented out
-                   #                       .plotInitialTime = 1),
+                                        .plotInitialTime = 10),
+                   combineRisk = list(.plotInitialTime = 10,
+                                      hiRisk1 = 0.5,
+                                      hiRisk2 = 10,
+                                      mapHiRisk = TRUE),
+                   leafletRiskMap = list(basemap = "satellite",
+                                         mapRisk = TRUE,
+                                         mapHiRisk = TRUE,
+                                         dataLayers = list("traps"),
+                                         riskLayers = list("trapsRisk"), #IE commented out
+                                         .plotInitialTime = 1,
+                                         fileName = c("VancouverIsland_leaflet", "LowerMainland_Leaflet"))
                    # trapsReportPDF = list(dataName = "traps",
                    #                       fileName = "trapsReport",
                    #                       saveDir=getwd(),

@@ -35,9 +35,7 @@ defineModule(sim, list(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = "riskParams", objectClass = "data.frame", desc = "Dataframe of species and data specific parameters for 'translateRisk' and combining risk functions", sourceURL = NA),
     expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data layers", sourceURL = NA),
-    expectsInput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS", sourceURL = NA),
-    expectsInput(objectName = "crs", objectClass = "data.frame", desc = "PROJ.4 character string defining desired coordinate reference system", sourceURL = NA),
-    expectsInput(objectName = "res", objectClass = "data.frame", desc = "Desired raster resolution, in meters. Single number or vector of two numbers", sourceURL = NA)
+    expectsInput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS", sourceURL = NA)
     ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
@@ -112,10 +110,10 @@ calculateRiskPlot <- function(sim) {
  
   for (i in 1:length(sim$riskList)) {
     clearPlot()
-    Plot(sim$riskList[[i]], title = TRUE, cols=rev(heat.colors(16))) #legendRange = 0:1
+    Plot(sim$riskList[[i]], title = names(sim$riskList[[i]]), cols=rev(heat.colors(16))) #legendRange = 0:1
     if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
       for(m in names(sim$riskList[[i]])) { 
-        Plot(sim$dataList[[i]][["water"]], addTo=m)
+        Plot(sim$dataList[[i]][["water"]], addTo= m)
       }
     }
    }  
@@ -217,42 +215,7 @@ calculateRiskTranslate <- function(sim) {
       stop("calculateRisk: There is no SpeciesRiskParams.csv dataframe provided") }
   }
   
-  ##### Create data if sim$dataList not provided
-  #if(is.null(sim$dataList)){
-  #  sim$dataList <- list()
-  #  
-  #  exampleRas <- raster::raster(ext=raster::extent(P(sim)$ROI), 
-  #                               resolution=P(sim)$res, 
-  #                               crs=raster::crs(P(sim)$crs))
-  #  values(exampleRas) <- runif(length(exampleRas), min=1, max=100)
-  #  names(exampleRas) <- "treeCover"
-  #  
-  #  sim$dataList[["treeCover"]] <- exampleRas
-  #}
-  #
-  ##### Create ROI if sim$ROI not provided
-  #if(is.null(sim$ROI)) {
-  #  x <- c(-1935000, -1934000, -1909000, -1911000, -1917000, -1922000, -1938000, -1935000)
-  #  y <- c(1410000, 1407000, 1405000, 1414000, 1414500, 1413800, 1414200, 1410000)
-  #  ROI <- cbind(x, y) %>%
-  #    Polygon() %>%
-  #    list() %>%
-  #    Polygons("s1") %>%
-  #    list() %>%
-  #    SpatialPolygons(1L)
-  #  crs(ROI) <- P(sim)$crs
-  #  sim$ROI <- ROI
-  #}
-  #
-  ##### Create crs if sim$crs not provided
-  #if(is.null(sim$crs)) {
-  #sim$crs <- crs("+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0)
-  #}
-  #
-  ##### Create res if sim$res not provided
-  #if(is.null(sim$res)) {
-  #sim$res <- 30
-  #}
+  
   
   return(invisible(sim))
 }
