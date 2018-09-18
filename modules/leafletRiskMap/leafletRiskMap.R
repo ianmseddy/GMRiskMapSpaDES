@@ -150,7 +150,10 @@ leafletRiskMapInit <- function(sim) {
 
 ### plot event:
 leafletRiskMapPlot <- function(sim) {
-  
+  if (length(sim$leafletMap != length(P(sim)$fileName))) {
+    stop("Number of leaflet file names do not match number of ROIs")
+  }
+
   for (i in 1:length(sim$leafletMap)) {
     # save leafletMap as html file to outputs folder
     

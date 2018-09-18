@@ -23,21 +23,20 @@ objects <- list(ROI = ROIsub) # predefined roi character string
 #objects <- list(roi = testROI) # SpatialPolygon roi - script to create testROI object below
 #objects <- list() # no roi - select on map
 
-modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations",  
-                #"selectROI",, "trapsReportPDF",  
+modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations","trapsReportPDF",  
                 "combineRisk", "loadLcc2015", "lccToTreeCover", "calculateRisk", "leafletRiskMap")
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
-parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
-                   loadGMTraps = list(.plotInitialTime = 1),
-                   loadPortLocations = list(.plotInitialTime = 1),
-                   cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0",
+parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
+                   loadGMTraps = list(.plotInitialTime = 11),
+                   loadPortLocations = list(.plotInitialTime = 11),
+                   cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs",
                                             res = 30,
                                             .plotInitialTime = 1, 
-                                            usePlot = TRUE), 
-                   lccToTreeCover = list(.plotInitialTime = 10),
+                                            usePlot = FALSE), 
+                   lccToTreeCover = list(.plotInitialTime = 11),
                    calculateRisk = list(species = "GypsyMoth",
-                                        .plotInitialTime = 10),
-                   combineRisk = list(.plotInitialTime = 10,
+                                        .plotInitialTime = 11),
+                   combineRisk = list(.plotInitialTime = 11,
                                       hiRisk1 = 0.5,
                                       hiRisk2 = 10,
                                       mapHiRisk = TRUE),
@@ -47,18 +46,18 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 1),
                                          dataLayers = list("traps"),
                                          riskLayers = list("trapsRisk"), #IE commented out
                                          .plotInitialTime = 1,
-                                         fileName = c("VancouverIsland_leaflet", "LowerMainland_Leaflet"))
-                   # trapsReportPDF = list(dataName = "traps",
-                   #                       fileName = "trapsReport",
-                   #                       saveDir=getwd(),
-                   #                       popDistType = "linear",
-                   #                       popMaxDist = 2000,
-                   #                       popMinDist = 750,
-                   #                       popMaxCatch = 8,
-                   #                       basemap = "roadmap",
-                   #                       mapRisk = TRUE,
-                   #                       mapHiRisk = TRUE,
-                   #                       .pdfInitialTime = 100)
+                                         fileName = c("VancouverIsland_Leaflet", "LowerMainland_Leaflet")),
+                   trapsReportPDF = list(dataName = "traps",
+                                         fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"),
+                                         saveDir=getwd(),
+                                         popDistType = "linear",
+                                         popMaxDist = 2000,
+                                         popMinDist = 750,
+                                         popMaxCatch = 8,
+                                         basemap = "roadmap",
+                                         mapRisk = TRUE,
+                                         mapHiRisk = TRUE,
+                                         .pdfInitialTime = 100)
 )
 
 

@@ -104,6 +104,7 @@ cropReprojectDataInit <- function(sim) {
     ROI <- raster(xmn = subr$xmn, xmx = subr$xmx, ymn = subr$ymn, ymx = subr$ymx)
     crs(ROI) <-  CRS(P(sim)$crs)
     res(ROI) <- P(sim)$res
+    ROI <- setValues(ROI, 1) #This is necessary if ROI is to be reprojected later
     # names(ROI) <- sim$ROI[i, 1]
     temp[[i]] <- ROI
     }
@@ -161,21 +162,24 @@ cropReprojectDataGIS <- function(sim) {
   sim$dataList <- lapply(1:length(sim$ROI), FUN = function(i, files = sim$dataListInit, ROI= sim$ROI, 
                                                             dir = outputPath(sim)){
     region <- ROI[i]
-    subIndex <- 1:length(files)
     
-    subList <- lapply(subIndex, FUN = function(ii, x = region, ...){
+    
+    subList <- lapply(1:length(files), FUN = function(ii, subROI = region, files = dataListInit){
      
-      file <- files[ii] # necessary to preserve names for file output
+      subFile <- files[ii] # single brackets necessary to preserve names for file output
       
-      output <- Cache(postProcess, x = file[[1]], rasterToMatch = x[[1]], 
-                      filename2 = paste(dir,"/", names(file), "_", names(x), sep = ""))
-
-      if (class(output) == "SpatialPointsDataFrame") {
-        output@bbox <- raster::as.matrix(extent(x[[1]]))
-      } else if (is.null(output)) {
-          cat(crayon::bgGreen$bold("no ", names(file), " in ", names(x), sep = ""))#class is null. It will be removed later  
-      } else if (class(output) == "RasterLayer") {
-        extent(output) <- extent(x = x[[1]])
+      if (class(subFile[[1]]) != "SpatialPointsDataFrame") {
+      
+        output <- Cache(postProcess, x = subFile[[1]], rasterToMatch = subROI[[1]], 
+                      filename2 = paste(dir,"/", names(subFile), "_", names(subROI), sep = ""))
+      }else{
+        #Crop and reproject the old fashioned way
+        output <- projectInputs(x = subFile[[1]], targetCRS = crs(subROI[[1]]))
+        output <- cropInputs(x = output, subROI[[1]], filename = paste(dir, "/", names(subFile), "_", names(subROI), sep = ""))
+      }
+        # output@bbox <- raster::as.matrix(extent(subROI[[1]]))
+      if (is.null(output)) {
+          cat(crayon::bgGreen$bold("no ", names(subFile), " in ", names(subROI), sep = ""))#class is null. It will be removed later  
       }
       return(output)
     })
@@ -183,10 +187,12 @@ cropReprojectDataGIS <- function(sim) {
     #run postProcess sim$dataListInit by region (postProcess clips, masks, and reprojects)
     names(subList) <- names(sim$dataListInit)
     subList <- Filter(Negate(is.null), subList)
+    
     return(subList)
     })
   
   names(sim$dataList) <- names(sim$ROI)
+  
   return(invisible(sim))
 }
 
