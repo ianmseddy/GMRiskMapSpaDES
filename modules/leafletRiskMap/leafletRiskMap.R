@@ -91,42 +91,36 @@ doEvent.leafletRiskMap = function(sim, eventTime, eventType, debug = FALSE) {
       if(!is.na(P(sim)$dataLayers)) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "mapdata")
       if(!is.na(P(sim)$riskLayers)) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "maprisk")  
       sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "leafletRiskMap", "plot", .last())
-      # sim <- scheduleEvent(sim, time(sim) + increment, "leafletRiskMap", "basemap")
     },
     maptotalrisk = {
       # do stuff for this event
       sim <- leafletRiskMapLeafTotalRisk(sim)
       
       # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + increment, "leafletRiskMap", "maptotalrisk")
     },
     maphirisk = {
       # do stuff for this event
       sim <- leafletRiskMapLeafHiRisk(sim)
       
       # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + increment, "leafletRiskMap", "maphirisk")
     },
     mapdata = {
       # do stuff for this event
       sim <- leafletRiskMapLeafData(sim)
       
       # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + increment, "leafletRiskMap", "mapdata")
     },
     maprisk = {
       # do stuff for this event
       sim <- leafletRiskMapLeafRisk(sim)
       
       # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + increment, "leafletRiskMap", "maprisk")
     },
     plot = {
       # do stuff for this event
       sim <- leafletRiskMapPlot(sim)
 
       # schedule future event(s)
-      #sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "leafletRiskMap", "plot")
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -150,14 +144,15 @@ leafletRiskMapInit <- function(sim) {
 
 ### plot event:
 leafletRiskMapPlot <- function(sim) {
-  if (length(sim$leafletMap != length(P(sim)$fileName))) {
+  browser()
+   if (length(sim$leafletMap) != length(P(sim)$fileName)) {
     stop("Number of leaflet file names do not match number of ROIs")
   }
-
+  
   for (i in 1:length(sim$leafletMap)) {
     # save leafletMap as html file to outputs folder
     
-    saveWidget(sim$leafletMap[[i]], file = file.path(outputPath(sim),paste0(P(sim)$fileName[i], ".html")), selfcontained=FALSE)
+    saveWidget(sim$leafletMap[[i]], file = file.path(outputPath(sim), paste0(P(sim)$fileName[i], ".html")), selfcontained=FALSE)
     
   # open saved leafletMap in browser window
   pander::openFileInOS(file.path(outputPath(sim),paste0(P(sim)$fileName[i], ".html")))
@@ -264,11 +259,10 @@ leafletRiskMapLeafHiRisk <- function(sim) {
 ### maprisk event:
 leafletRiskMapLeafRisk  <- function(sim) {
   
-  output <- lapply(1:length(sim$ROI), FUN = function(i, 
-                                                     riskLayers = P(sim)$riskLayers,
-                                                     dataList = sim$dataList,
-                                                     leafletMap = sim$leafletMap,
-                                                     riskList = sim$riskList) {
+  output <- Cache(lapply,1:length(sim$ROI), function(i, riskLayers = P(sim)$riskLayers,
+                                               dataList = sim$dataList,
+                                               leafletMap = sim$leafletMap,     
+                                               riskList = sim$riskList){
     
     #subset all input files
     riskLayers = riskLayers

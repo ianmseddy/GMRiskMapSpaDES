@@ -121,21 +121,6 @@ loadGMTrapsFormat <- function(sim) {
 
 .inputObjects <- function(sim) {
   
-  # Any code written here will be run during the simInit for the purpose of creating
-  # any objects required by this module and identified in the inputObjects element of defineModule.
-  # This is useful if there is something required before simulation to produce the module
-  # object dependencies, including such things as downloading default datasets, e.g.,
-  # downloadData("LCC2005", modulePath(sim)).
-  # Nothing should be created here that does not create an named object in inputObjects.
-  # Any other initiation procedures should be put in "init" eventType of the doEvent function.
-  # Note: the module developer can use 'sim$.userSuppliedObjNames' in their function below to
-  # selectively skip unnecessary steps because the user has provided those inputObjects in the
-  # simInit call. e.g.,
-  # if (!('defaultColor' %in% sim$userSuppliedObjNames)) {
-  #  defaultColor <- 'red'
-  # }
-  # ! ----- EDIT BELOW ----- ! #
-  # create sim$dataListInit if it doesn't exist
   if(is.null(sim$dataListInit)){
     sim$dataListInit <- list()
   }
@@ -151,7 +136,8 @@ loadGMTrapsFormat <- function(sim) {
   # import 2017 traps
   
   if("CurrentYear_TrapData.csv" %in% list.files(file.path(modulePath(sim),"loadGMTraps","data"))) {
-    #sim$dataListInit[["traps"]] <- rgdal::readOGR(dsn=file.path(modulePath(sim),"loadGMTraps","data","2017 prelim.kml"),layer = "2018GM Prelim")
+    #sim$dataListInit[["traps"]] <- rgdal::readOGR(dsn=file.path(modulePath(sim),
+    #"loadGMTraps","data","2017 prelim.kml"),layer = "2018GM Prelim")
     trapdat<-read.csv(file=file.path(modulePath(sim), "loadGMTraps", "data", "CurrentYear_TrapData.csv"))
     trapdat$origID<-1:dim(trapdat)[1]
     traps_spdf<-SpatialPointsDataFrame(coords=trapdat[,c("Longitude", "Latitude")],

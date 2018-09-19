@@ -93,24 +93,36 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 cropReprojectDataInit <- function(sim) {
-  
-  temp <- vector(mode = "list", length = nrow(sim$ROI))
-  vars <- c("xmn", "xmx", "ymn", "ymx")
-  
-  for (i in 1:nrow(sim$ROI)) {
+  if (class(sim$ROI) == "data.frame") { #if ROI is a dataframe with extents, rasterize it
+    temp <- vector(mode = "list", length = nrow(sim$ROI))
+    vars <- c("xmn", "xmx", "ymn", "ymx")
     
-    #This subsets each row and turns it into a raster
-    subr <- sim$ROI[i, vars]
-    ROI <- raster(xmn = subr$xmn, xmx = subr$xmx, ymn = subr$ymn, ymx = subr$ymx)
-    crs(ROI) <-  CRS(P(sim)$crs)
-    res(ROI) <- P(sim)$res
-    ROI <- setValues(ROI, 1) #This is necessary if ROI is to be reprojected later
-    # names(ROI) <- sim$ROI[i, 1]
-    temp[[i]] <- ROI
+    for (i in 1:nrow(sim$ROI)) {
+      
+      #This subsets each row and turns it into a raster
+      subr <- sim$ROI[i, vars]
+      ROI <- raster(xmn = subr$xmn, xmx = subr$xmx, ymn = subr$ymn, ymx = subr$ymx)
+      crs(ROI) <-  CRS(P(sim)$crs)
+      res(ROI) <- P(sim)$res
+      ROI <- setValues(ROI, 1) #This is necessary if ROI is to be reprojected later
+      # names(ROI) <- sim$ROI[i, 1]
+      temp[[i]] <- ROI
+      }
+    
+    names(temp) <- sim$ROI$Region
+    sim$ROI <- temp
+  } else if (class(sim$ROI) == "list"){ #if ROI is a list of shapefiles, rasterize them
+    if (class(sim$ROI[[i]]) == "SpatialPolygonsDataFrame") { 
+      outList <- lapply(sim$ROI, FUN = function(x, simRes = P(sim)$res) {
+        outRas <- raster(x)
+        outRas <- setValues(outRas, 1) #prevents downstream problem with reprojecting
+        res(outRas) <- simRes
+        return(outRas)
+      })
+      names(outList) <- naems(sim$ROI)
+      sim$ROI <- outList
     }
-  
-  names(temp) <- sim$ROI$Region
-  sim$ROI <- temp
+  } # ROI is already a list of rasters
   return(invisible(sim))
 }
 
