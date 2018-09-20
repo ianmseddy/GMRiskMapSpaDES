@@ -297,137 +297,133 @@ trapsReportPDFopen <- function(sim) {
     
     
     #### Map Sections of Traps #####
-    if (length(posTraps) <= 4) {#gmap does not like fine scale maps created by small posTraps. This threshold is experimental
-      dataList[[P(sim)$dataName]]$populationID <- NA
-      dataList[[P(sim)$dataName]]$populationID[dataList[[P(sim)$dataName]]$traps > 0] <- 1
-      
-    } else {
-      for (ii in 1:length(posTraps)) {
-        if (posTraps$ID[ii] %in% trapLabels){
-        } else {
-          
-          trapROI <- sp::polygons(dismo::circles(data.frame(x = sp::coordinates(posTrapsOrdered)[ii,][1],
-                                                            y = sp::coordinates(posTrapsOrdered)[ii,][2]),
-                                                 lonlat = FALSE, n = 500, dissolve = FALSE,
-                                                 d = populationSearchDistance(x = posTrapsOrdered[ii,]$traps,
+    
+    for (ii in 1:length(posTraps)) {
+      if (posTraps$ID[ii] %in% trapLabels){
+      } else {
+        
+        trapROI <- sp::polygons(dismo::circles(data.frame(x = sp::coordinates(posTrapsOrdered)[ii,][1],
+                                                          y = sp::coordinates(posTrapsOrdered)[ii,][2]),
+                                               lonlat = FALSE, n = 500, dissolve = FALSE,
+                                               d = populationSearchDistance(x = posTrapsOrdered[ii,]$traps,
+                                                                          type=P(sim)$popDistType,
+                                                                          maxCatch=P(sim)$popMaxCatch,
+                                                                          minDist=P(sim)$popMinDist,
+                                                                          maxDist=P(sim)$popMaxDist)))
+        crs(trapROI) <- crs(posTrapsOrdered)
+        trapCrop <- raster::crop(posTrapsOrdered, trapROI)
+  
+        for (j in 1:length(trapCrop) ) {
+          tempROI <- sp::polygons(dismo::circles(data.frame(x = sp::coordinates(trapCrop)[j,][1],
+                                                            y = sp::coordinates(trapCrop)[j,][2]),
+                                                 lonlat=FALSE, n=500, dissolve=FALSE,
+                                                 d=populationSearchDistance(x = trapCrop[j,]$traps,
                                                                             type=P(sim)$popDistType,
                                                                             maxCatch=P(sim)$popMaxCatch,
                                                                             minDist=P(sim)$popMinDist,
                                                                             maxDist=P(sim)$popMaxDist)))
-          crs(trapROI) <- crs(posTrapsOrdered)
-          trapCrop <- raster::crop(posTrapsOrdered, trapROI)
   
-          for (j in 1:length(trapCrop) ) {
-            tempROI <- sp::polygons(dismo::circles(data.frame(x = sp::coordinates(trapCrop)[j,][1],
-                                                              y = sp::coordinates(trapCrop)[j,][2]),
-                                                   lonlat=FALSE, n=500, dissolve=FALSE,
-                                                   d=populationSearchDistance(x = trapCrop[j,]$traps,
-                                                                              type=P(sim)$popDistType,
-                                                                              maxCatch=P(sim)$popMaxCatch,
-                                                                              minDist=P(sim)$popMinDist,
-                                                                              maxDist=P(sim)$popMaxDist)))
+          crs(tempROI) <- crs(posTrapsOrdered)
+          tempTraps <- raster::crop(posTrapsOrdered, tempROI)
   
-            crs(tempROI) <- crs(posTrapsOrdered)
-            tempTraps <- raster::crop(posTrapsOrdered, tempROI)
-  
-            if( FALSE %in% (tempTraps$ID %in% trapCrop$ID) == FALSE ) {
-            } else { trapCrop <- spRbind(trapCrop,  tempTraps[match(FALSE, tempTraps$ID %in% trapCrop$ID ), ]) }
-          }
-          trapLabels <- c(trapLabels, as.character(trapCrop$ID))
-          tempList <- list(trapCrop$ID)
-          popList <- c(popList, tempList)
-  
-          # reset trap extent for mapping
-          if(length(trapCrop) > 1) {
-            trapROI <- raster::extent(trapCrop)
-          }
-  
-          # subsetting google traps to match trapCrop
-          trapCropGoogle <- posTrapsGoogle[match(trapCrop$ID, posTrapsGoogle$ID),]
-          # get google basemap
-          tempGoogleROI <- raster::extent(raster::projectExtent(raster::raster(trapROI, 
-                                                                               crs=raster::crs(posTrapsOrdered)),
-                                                                crs="+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
-          
-          if(exists("tempGoogleMap")){
-            rm(tempGoogleMap) #Because this is a for loop and dismo fails for whatever reason
-          }
-          tempGoogleMap <- dismo::gmap(x = tempGoogleROI, type = P(sim)$basemap, lonlat=TRUE, zoom=13)
-  
-          # checking all traps are on google map - if not, zoom out 1 zoom level
-          trapsPoly <- as(extent(trapCropGoogle),"SpatialPolygons")
-          crs(trapsPoly) <- crs(tempGoogleMap)
-          mapPoly <- as(extent(tempGoogleMap),"SpatialPolygons")
-          crs(mapPoly) <- crs(tempGoogleMap)
-          if ( rgeos::gCovers(mapPoly, trapsPoly) == FALSE ){ 
-            tempGoogleMap <- dismo::gmap(x = extent(trapsPoly), type = "roadmap", lonlat=TRUE, zoom=12)
-          }
-  
-          # box and plotting
-          box2 <- as(raster::extent(tempGoogleMap), 'SpatialPolygons')
-          
-          #### Add basemap ####
-          plot_gmap(tempGoogleMap) #plot
-  
-          ##### Map Risk #####
-          if(P(sim)$mapRisk == TRUE) {
-            tempGoogleRisk <- raster::projectRaster(totalRisk, tempGoogleMap)
-            tempGoogleRisk[tempGoogleRisk<=0] <- NA
-            if("water" %in% names(dataList)) {
-              waterMask <- raster::projectRaster(dataList$water, tempGoogleMap, method="ngb")
-              tempGoogleRisk <- raster::mask(tempGoogleRisk, waterMask, inverse=TRUE)
-            }
-            plot(tempGoogleRisk, add = TRUE, col=rev(heat.colors(16)), legend=FALSE, alpha=0.3)
-          }
-          # if mapHiRisk=TRUE: add hiRisk to map
-          if(P(sim)$mapHiRisk == TRUE) {
-            highRiskGoogleTemp <- raster::projectRaster(highRisk, tempGoogleMap)
-            highRiskGoogleTemp[highRiskGoogleTemp<=0] <- NA
-            if("water" %in% names(dataList)) {
-              waterMask <- raster::projectRaster(dataList$water, highRiskGoogleTemp, method="ngb")
-              highRiskGoogleTemp <- raster::mask(highRiskGoogleTemp, waterMask, inverse=TRUE)
-            }
-            plot(highRiskGoogleTemp, add = TRUE, col="#FF0000", legend=FALSE, alpha=0.4)
-          }
-  
-          # setting point colours
-          temp <- as.factor(trapCropGoogle$traps)
-          trapCropGoogle$colour <- temp
-          levels(trapCropGoogle$colour) <- c(levels(temp), rainbow(n = length(levels(temp))))
-          for( k in 1:length(levels(temp)) ) {
-            trapCropGoogle$colour[trapCropGoogle$colour == levels(temp)[k]] <- rainbow(n = length(levels(temp)))[k]
-          }
-          trapCropGoogle <- trapCropGoogle[with(trapCropGoogle, order(trapCropGoogle$traps)), ]
-  
-          #### Map Traps ####
-          points(trapCropGoogle, pch=16, cex=1, col=trapCropGoogle$colour)
-          maptools::pointLabel(x=sp::coordinates(trapCropGoogle)[,1],
-                               y=sp::coordinates(trapCropGoogle)[,2],
-                               labels=as.character(trapCropGoogle$ID),
-                               cex=0.8,
-                               font=1)
-  
-          #### add legend, scalebar, box ####
-          leg <- legend("bottomleft", legend=paste0("Catch: ", unique(trapCropGoogle$traps),"    "),
-                        pch=16, cex=0.8, pt.cex=1, bg="white", plot=FALSE)
-          legbox <- as(raster::extent(c(xmin(box2), xmax(box2), ymin(box2) - leg$rect$h, ymin(box2))), "SpatialPolygons")
-          legend(x = xmin(legbox), y = ymax(legbox), legend = paste0("Catch: ", unique(trapCropGoogle$traps)),
-                 pch = 16, cex = 0.8, pt.cex = 1, bg = "white", bty = "n", col = unique(trapCropGoogle$colour))
-          raster::scalebar(d = 1, xy = c(leg$rect$left + leg$rect$w, ymin(legbox) + 0.001688268),
-                           type = "bar", divs = 2, lonlat = TRUE, below = "km", cex = 0.7)
-          text(x = (xmax(box2)+ xmin(box2))/2, y = ymax(box2)+(leg$rect$h/2),
-               label = paste0("Population ", length(popList)), font = 2, cex = 1.5)
-          box2 <- as(extent(c(xmin(box2), xmax(box2), ymin(legbox), ymax(box2))), "SpatialPolygons")
-          plot(box2, add = TRUE)
-  
+          if( FALSE %in% (tempTraps$ID %in% trapCrop$ID) == FALSE ) {
+          } else { trapCrop <- spRbind(trapCrop,  tempTraps[match(FALSE, tempTraps$ID %in% trapCrop$ID ), ]) }
         }
-     
-      dataList[[P(sim)$dataName]]$populationID <- NA
-      for(m in 1:length(popList)) {
-        dataList[[P(sim)$dataName]]$populationID[match(popList[[m]], dataList[[P(sim)$dataName]]$ID)] <- m
+        trapLabels <- c(trapLabels, as.character(trapCrop$ID))
+        tempList <- list(trapCrop$ID)
+        popList <- c(popList, tempList)
+  
+        # reset trap extent for mapping
+        if(length(trapCrop) > 1) {
+          trapROI <- raster::extent(trapCrop)
+        }
+  
+        # subsetting google traps to match trapCrop
+        trapCropGoogle <- posTrapsGoogle[match(trapCrop$ID, posTrapsGoogle$ID),]
+        # get google basemap
+        tempGoogleROI <- raster::extent(raster::projectExtent(raster::raster(trapROI, 
+                                                                             crs=raster::crs(posTrapsOrdered)),
+                                                              crs="+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
+        
+        if(exists("tempGoogleMap")){
+          rm(tempGoogleMap) #Because this is a for loop and dismo fails for whatever reason
+        }
+        tempGoogleMap <- dismo::gmap(x = tempGoogleROI, type = P(sim)$basemap, lonlat=TRUE, zoom=13)
+  
+        # checking all traps are on google map - if not, zoom out 1 zoom level
+        trapsPoly <- as(extent(trapCropGoogle),"SpatialPolygons")
+        crs(trapsPoly) <- crs(tempGoogleMap)
+        mapPoly <- as(extent(tempGoogleMap),"SpatialPolygons")
+        crs(mapPoly) <- crs(tempGoogleMap)
+        if ( rgeos::gCovers(mapPoly, trapsPoly) == FALSE ){ 
+          tempGoogleMap <- dismo::gmap(x = extent(trapsPoly), type = "roadmap", lonlat=TRUE, zoom=12)
+        }
+  
+        # box and plotting
+        box2 <- as(raster::extent(tempGoogleMap), 'SpatialPolygons')
+        
+        #### Add basemap ####
+        plot_gmap(tempGoogleMap) #plot
+  
+        ##### Map Risk #####
+        if(P(sim)$mapRisk == TRUE) {
+          tempGoogleRisk <- raster::projectRaster(totalRisk, tempGoogleMap)
+          tempGoogleRisk[tempGoogleRisk<=0] <- NA
+          if("water" %in% names(dataList)) {
+            waterMask <- raster::projectRaster(dataList$water, tempGoogleMap, method="ngb")
+            tempGoogleRisk <- raster::mask(tempGoogleRisk, waterMask, inverse=TRUE)
+          }
+          plot(tempGoogleRisk, add = TRUE, col=rev(heat.colors(16)), legend=FALSE, alpha=0.3)
+        }
+        # if mapHiRisk=TRUE: add hiRisk to map
+        if(P(sim)$mapHiRisk == TRUE) {
+          highRiskGoogleTemp <- raster::projectRaster(highRisk, tempGoogleMap)
+          highRiskGoogleTemp[highRiskGoogleTemp<=0] <- NA
+          if("water" %in% names(dataList)) {
+            waterMask <- raster::projectRaster(dataList$water, highRiskGoogleTemp, method="ngb")
+            highRiskGoogleTemp <- raster::mask(highRiskGoogleTemp, waterMask, inverse=TRUE)
+          }
+          plot(highRiskGoogleTemp, add = TRUE, col="#FF0000", legend=FALSE, alpha=0.4)
+        }
+  
+        # setting point colours
+        temp <- as.factor(trapCropGoogle$traps)
+        trapCropGoogle$colour <- temp
+        levels(trapCropGoogle$colour) <- c(levels(temp), rainbow(n = length(levels(temp))))
+        for( k in 1:length(levels(temp)) ) {
+          trapCropGoogle$colour[trapCropGoogle$colour == levels(temp)[k]] <- rainbow(n = length(levels(temp)))[k]
+        }
+        trapCropGoogle <- trapCropGoogle[with(trapCropGoogle, order(trapCropGoogle$traps)), ]
+  
+        #### Map Traps ####
+        points(trapCropGoogle, pch=16, cex=1, col=trapCropGoogle$colour)
+        maptools::pointLabel(x=sp::coordinates(trapCropGoogle)[,1],
+                             y=sp::coordinates(trapCropGoogle)[,2],
+                             labels=as.character(trapCropGoogle$ID),
+                             cex=0.8,
+                             font=1)
+  
+        #### add legend, scalebar, box ####
+        leg <- legend("bottomleft", legend=paste0("Catch: ", unique(trapCropGoogle$traps),"    "),
+                      pch=16, cex=0.8, pt.cex=1, bg="white", plot=FALSE)
+        legbox <- as(raster::extent(c(xmin(box2), xmax(box2), ymin(box2) - leg$rect$h, ymin(box2))), "SpatialPolygons")
+        legend(x = xmin(legbox), y = ymax(legbox), legend = paste0("Catch: ", unique(trapCropGoogle$traps)),
+               pch = 16, cex = 0.8, pt.cex = 1, bg = "white", bty = "n", col = unique(trapCropGoogle$colour))
+        raster::scalebar(d = 1, xy = c(leg$rect$left + leg$rect$w, ymin(legbox) + 0.001688268),
+                         type = "bar", divs = 2, lonlat = TRUE, below = "km", cex = 0.7)
+        text(x = (xmax(box2)+ xmin(box2))/2, y = ymax(box2)+(leg$rect$h/2),
+             label = paste0("Population ", length(popList)), font = 2, cex = 1.5)
+        box2 <- as(extent(c(xmin(box2), xmax(box2), ymin(legbox), ymax(box2))), "SpatialPolygons")
+        plot(box2, add = TRUE)
+  
       }
+   
+    dataList[[P(sim)$dataName]]$populationID <- NA
+    for(m in 1:length(popList)) {
+      dataList[[P(sim)$dataName]]$populationID[match(popList[[m]], dataList[[P(sim)$dataName]]$ID)] <- m
     }
   }
+  
     
   #### FINAL PAGE OF PDF ####
     
