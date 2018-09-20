@@ -135,7 +135,8 @@ trapsReportPDFopen <- function(sim) {
     if( P(sim)$dataName %in% names(dataList[[P(sim)$dataName]]) ) {
       posTraps <- subset(dataList[[P(sim)$dataName]], 
                          dataList[[P(sim)$dataName]][[charmatch(P(sim)$dataName,                                                                                                   names(dataList[[P(sim)$dataName]]))]] > 0)
-      if(length(posTraps)==0) { stop("trapsReportPDF: No positive trap catches in selected ROI for dataset '", P(sim)$dataName, "'") }
+      if(length(posTraps)==0) { stop("trapsReportPDF: No positive trap catches in selected ROI for dataset '", 
+                                     P(sim)$dataName, "'") }
     } else {
       posTraps <- subset(dataList[[P(sim)$dataName]], dataList[[P(sim)$dataName]][[1]] > 0)
       if(length(posTraps)==0) { stop("trapsReportPDF: No positive trap catches in ", 
@@ -154,13 +155,23 @@ trapsReportPDFopen <- function(sim) {
     
     if (class(ROI) == "RasterLayer") {
       roiGoogle <- projectRaster(ROI, crs = ("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
-    } else {
+      } else {
       roiGoogle <- sp::spTransform(ROI, CRSobj = sp::CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
-    }
+      }
     zoomLevel <- ggmap::calc_zoom(c(xmin(roiGoogle), xmax(roiGoogle)), c(ymin(roiGoogle), ymax(roiGoogle)))
-    if(exists("mapGoogle")){ rm(mapGoogle)}
     
-    mapGoogle <- dismo::gmap(x = roiGoogle, type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1)
+    if (exists("mapGoogle")){rm(mapGoogle)}
+    Attempt <- 0  #This is a silly workaround to PFC network problems
+    mapGoogle <- 1
+    while (class(mapGoogle) != "RasterLayer" ) {
+      
+      mapGoogle <- try(dismo::gmap(x = extent(roiGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
+                         silent = TRUE)
+      Attempt = Attempt + 1
+      Sys.sleep(0.5)
+      if (Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+      }
+    
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
     #### Add basemap ####
     plot_gmap(mapGoogle) #plot
@@ -219,19 +230,29 @@ trapsReportPDFopen <- function(sim) {
     text(x = (xmax(box)+xmin(box))/2, y = ymax(box)+(leg$rect$h/2),
          label="Project Region of Interest", font=2, cex=1.5)
     box2 <- as(extent(c(xmin(box), xmax(box), ymin(legbox), ymax(box))), "SpatialPolygons")
-    plot(box2, add=T)
+    plot(box2, add = TRUE)
     
     #
     ######################  PAGE 2 OF PDF  ##########################
-    #make new page!
-    rm(mapGoogle) #gmap fails for some reason if the object exists already
     # extent of posTraps plus added buffer
     zoomLevel <- ggmap::calc_zoom(c(xmin(posTrapsGoogle)-(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10,
                                     xmax(posTrapsGoogle)+(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10),
                                   c(ymin(posTrapsGoogle)-(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10,
                                     ymax(posTrapsGoogle)+(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10))
 
-    mapGoogle <- dismo::gmap(x = extent(posTrapsGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1)
+    if (exists("mapGoogle")){rm(mapGoogle)}
+    
+    Attempt <- 0
+    mapGoogle <- 1
+    while (class(mapGoogle) != "RasterLayer") {
+      
+      mapGoogle <- try(dismo::gmap(x = extent(posTrapsGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
+                         silent = TRUE)
+      Attempt = Attempt + 1
+      Sys.sleep(0.5)
+      if (Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+      }
+    
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
 
     #### Add basemap ####
@@ -344,12 +365,17 @@ trapsReportPDFopen <- function(sim) {
         tempGoogleROI <- raster::extent(raster::projectExtent(raster::raster(trapROI, 
                                                                              crs=raster::crs(posTrapsOrdered)),
                                                               crs="+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0 "))
+        if (exists("tempGoogleMap")) {rm(tempGoogleMap)}
+        Attempt <- 0  #this is a silly workaround to PFC network problems
+        tempGoogleMap <- 1
+        while (class(tempGoogleMap) != "RasterLayer") {
+          tempGoogleMap <- try(dismo::gmap(x = extent(tempGoogleROI), type = P(sim)$basemap, lonlat=TRUE, zoom= 13),
+                             silent = TRUE)
+          Attempt = Attempt + 1
+          Sys.sleep(0.5)
+          if(Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+          }
         
-        if(exists("tempGoogleMap")){
-          rm(tempGoogleMap) #Because this is a for loop and dismo fails for whatever reason
-        }
-        tempGoogleMap <- dismo::gmap(x = tempGoogleROI, type = P(sim)$basemap, lonlat=TRUE, zoom=13)
-  
         # checking all traps are on google map - if not, zoom out 1 zoom level
         trapsPoly <- as(extent(trapCropGoogle),"SpatialPolygons")
         crs(trapsPoly) <- crs(tempGoogleMap)
@@ -454,8 +480,10 @@ trapsReportPDFopen <- function(sim) {
 
 ## extra functions
 plot_gmap <- function(ras,...){
+  
   cols <- ras@legend@colortable
   z <- raster::unique(ras)
   par(mar=c(0,0,0,0))
   plot(ras,col=cols[z+1],legend=FALSE,box=FALSE,axes=FALSE,legend.mar=0,...)
-}
+  }
+
