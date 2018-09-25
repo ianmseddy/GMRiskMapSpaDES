@@ -153,7 +153,7 @@ reclassifyForestCover <- function(sim) {
   
   #anythig you change in datalist has to correspond to risk values, so don't overwrite anything.... 
   names(outList) <- names(sim$ROI)
-  
+  browser()
   sim$dataList <- outList
   return(invisible(sim))
 }

@@ -68,7 +68,7 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
     if(curl::has_internet() == FALSE) {
       message("trapsReportPDF: No internet connection. Cannot generate PDF")
     } 
-    sim <- scheduleEvent(sim, time(sim) + 3, "trapsReportPDF", "pdfopen")
+    sim <- scheduleEvent(sim, start(sim) + 5, "trapsReportPDF", "pdfopen")
       
     },
     pdfopen = {
@@ -142,6 +142,7 @@ trapsReportPDFopen <- function(sim) {
     mapGoogle <- 1
     while (class(mapGoogle) != "RasterLayer" ) {
       options(warn = -1)
+      browser()
       mapGoogle <- try(dismo::gmap(x = extent(roiGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
                          silent = TRUE)
       Attempt = Attempt + 1
@@ -229,7 +230,9 @@ trapsReportPDFopen <- function(sim) {
                          silent = TRUE)
       Attempt = Attempt + 1
       Sys.sleep(0.5)
-      if (Attempt > 100){ browser() stop("Network connectivity problems are preventing download of Google map...")}
+      if (Attempt > 100){ 
+        browser() 
+        stop("Network connectivity problems are preventing download of Google map...")}
       }
     optiosn(warn=0)
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')

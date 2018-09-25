@@ -17,6 +17,8 @@ times <- list(start=1.0, end=10.5, timeunit="year")
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
                 "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap", "treeCoverClassify") 
 #,  "trapsReportPDF"
+                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap",  "trapsReportPDF") 
+#,"treeCoverClassify"
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                    loadGMTraps = list(.plotInitialTime = 11),
@@ -38,18 +40,18 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                                          dataLayers = list("traps"),
                                          riskLayers = list("trapsRisk"),
                                          .plotInitialTime = 11,
-                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet"))#
-                   # trapsReportPDF = list(dataName = "traps",
-                   #                       fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
-                   #                       saveDir=getwd(),
-                   #                       popDistType = "linear",
-                   #                       popMaxDist = 2000,
-                   #                       popMinDist = 750,
-                   #                       popMaxCatch = 8,
-                   #                       basemap = "roadmap",
-                   #                       mapRisk = TRUE,
-                   #                       mapHiRisk = TRUE,
-                   #                       .pdfInitialTime = 100)
+                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet")),#
+                   trapsReportPDF = list(dataName = "traps",
+                                         fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
+                                         saveDir=getwd(),
+                                         popDistType = "linear",
+                                         popMaxDist = 2000,
+                                         popMinDist = 750,
+                                         popMaxCatch = 8,
+                                         basemap = "roadmap",
+                                         mapRisk = TRUE,
+                                         mapHiRisk = TRUE,
+                                         .pdfInitialTime = 100)
 )
 
 
