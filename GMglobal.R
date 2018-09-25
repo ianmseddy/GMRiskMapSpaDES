@@ -15,6 +15,8 @@ times <- list(start=1.0, end=10.5, timeunit="year")
 
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
+                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap", "treeCoverClassify") 
+#,  "trapsReportPDF"
                 "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap",  "trapsReportPDF") 
 #,"treeCoverClassify"
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
