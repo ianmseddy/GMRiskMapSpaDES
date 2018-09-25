@@ -27,7 +27,7 @@ defineModule(sim, list(
     defineParameter("popDistType", "character", "straight", NA, NA, "Shape of the population distance curve: 'straight', 'square', 'linear', 'logistic', 'gaussian'"),
     defineParameter("popMaxDist", "numeric", 2000, 0, 20000, "Distance defining the maximum search radius for traps of the same population. Must be defined."),
     defineParameter("popMinDist", "numeric", 1000, 0, 20000, "Distance defining the minimum search radius for traps of the same population"),
-    defineParameter("popMaxCatch", "integer", 10, 1, 100, "Maximum catch number where the search radius is at maxDist"),
+    defineParameter("popMaxCatch", "numeric", 10, 1, 100, "Maximum catch number where the search radius is at maxDist"),
     defineParameter("basemap", "character", "roadmap", NA, NA, "Basemap type of map. Options: satellite, roadmap, hybrid, terrain"),
     defineParameter("mapRisk", "logical", FALSE, NA, NA, "Logical of whether to map totalRisk to PDF map"),
     defineParameter("mapHiRisk", "logical", FALSE, NA, NA, "Logical of whether to map hiRisk to PDF map"),
@@ -35,11 +35,12 @@ defineModule(sim, list(
     defineParameter(".pdfInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between pdf events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
+    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
-    expectsInput(objectName = "dataList", objectClass = "List", desc = "List of data rasters, including object named P(sim)$dataName", sourceURL = NA),
+    expectsInput(objectName = "dataList", objectClass = "list", desc = "List of data rasters, including object named P(sim)$dataName", sourceURL = NA),
+    expectsInput(objectName = "ROI", objectClass = "list", desc = "list of ROIs, whether shapefiles, rasters, or extents"),
     expectsInput(objectName = "totalRisk", objectClass = "RasterLayer", desc = "Raster of totalRisk"), 
     expectsInput(objectName = "highRisk", objectClass = "RasterLayer", desc = "Raster of high risk. Will be null if mapHiRisk = FALSE.")
   ),
@@ -66,33 +67,9 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
       # schedule future event(s)
     if(curl::has_internet() == FALSE) {
       message("trapsReportPDF: No internet connection. Cannot generate PDF")
-    } else if( "pdfopen" %in% subset(completed(sim), completed(sim)$moduleName=="trapsReportPDF")$eventType == FALSE) {
-        if (time(sim) >= P(sim)$.pdfInitialTime) { # if pdfInitialTime has passed, open pdf now
-          #Checks if there is data for total risk and dataList, depending on whether each is needed 
-          if ((P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) && !is.null(sim$dataList[[1]]) && !is.null(sim$totalRisk[[1]])) {
-            sim <- scheduleEvent(sim, time(sim), "trapsReportPDF", "pdfopen")
-            
-          } else if ((P(sim)$mapRisk == FALSE && P(sim)$mapHiRisk == FALSE) && !is.null(sim$dataList[[1]]) ) {
-            sim <- scheduleEvent(sim, time(sim), "trapsReportPDF", "pdfopen")
-            
-          } else {
-            sim <- scheduleEvent(sim, time(sim)+0.1, "trapsReportPDF", "checkinputs", .last())
-          }
-          
-        } else {  # if pdfInitialTime has not passed, schedule to open pdf at pdfInitialTime
-          
-          if ((P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE) && !is.null(sim$dataList) && !is.null(sim$totalRisk)) {
-            sim <- scheduleEvent(sim, time(sim), "trapsReportPDF", "pdfopen")
-            
-          } else if ((P(sim)$mapRisk == FALSE && P(sim)$mapHiRisk == FALSE) && !is.null(sim$dataList) ) {
-            sim <- scheduleEvent(sim, time(sim), "trapsReportPDF", "pdfopen")
-            
-          } else {
-            sim <- scheduleEvent(sim, time(sim)+0.1, "trapsReportPDF", "checkinputs", .last())
-          }
-          
-        }
-      }
+    } 
+    sim <- scheduleEvent(sim, time(sim) + 3, "trapsReportPDF", "pdfopen")
+      
     },
     pdfopen = {
       # do stuff for this event
@@ -164,14 +141,14 @@ trapsReportPDFopen <- function(sim) {
     Attempt <- 0  #This is a silly workaround to PFC network problems
     mapGoogle <- 1
     while (class(mapGoogle) != "RasterLayer" ) {
-      
+      options(warn = -1)
       mapGoogle <- try(dismo::gmap(x = extent(roiGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
                          silent = TRUE)
       Attempt = Attempt + 1
       Sys.sleep(0.5)
-      if (Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+      if (Attempt > 100){stop("Network connectivity problems are preventing download of Google map...")}
       }
-    
+    options(warn = 0)
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
     #### Add basemap ####
     plot_gmap(mapGoogle) #plot
@@ -234,9 +211,11 @@ trapsReportPDFopen <- function(sim) {
     
     #
     ######################  PAGE 2 OF PDF  ##########################
+    
+    
     # extent of posTraps plus added buffer
     zoomLevel <- ggmap::calc_zoom(c(xmin(posTrapsGoogle)-(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10,
-                                    xmax(posTrapsGoogle)+(xmax(posTrapsGoogle)-xmin(posTrapsGoogle))/10),
+                                    xmax(posTrapsGoogle)+((xmax(posTrapsGoogle)-xmin(posTrapsGoogle)))/10),
                                   c(ymin(posTrapsGoogle)-(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10,
                                     ymax(posTrapsGoogle)+(ymax(posTrapsGoogle)-ymin(posTrapsGoogle))/10))
 
@@ -245,14 +224,14 @@ trapsReportPDFopen <- function(sim) {
     Attempt <- 0
     mapGoogle <- 1
     while (class(mapGoogle) != "RasterLayer") {
-      
-      mapGoogle <- try(dismo::gmap(x = extent(posTrapsGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
+      options(warn=-1) #turns off warnings. Otherwise you will get around 40 warnings with PFC's crappy connection
+      mapGoogle <- try(dismo::gmap(x = extent(posTrapsGoogle), type = P(sim)$basemap, lonlat=TRUE),
                          silent = TRUE)
       Attempt = Attempt + 1
       Sys.sleep(0.5)
-      if (Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+      if (Attempt > 100){ browser() stop("Network connectivity problems are preventing download of Google map...")}
       }
-    
+    optiosn(warn=0)
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
 
     #### Add basemap ####
@@ -369,13 +348,14 @@ trapsReportPDFopen <- function(sim) {
         Attempt <- 0  #this is a silly workaround to PFC network problems
         tempGoogleMap <- 1
         while (class(tempGoogleMap) != "RasterLayer") {
+          options(warn = -1) #turns off warnings
           tempGoogleMap <- try(dismo::gmap(x = extent(tempGoogleROI), type = P(sim)$basemap, lonlat=TRUE, zoom= 13),
                              silent = TRUE)
           Attempt = Attempt + 1
           Sys.sleep(0.5)
-          if(Attempt > 60){stop("Network connectivity problems are preventing download of Google map...")}
+          if(Attempt > 100){stop("Network connectivity problems are preventing download of Google map...")}
           }
-        
+        options(warn=0)
         # checking all traps are on google map - if not, zoom out 1 zoom level
         trapsPoly <- as(extent(trapCropGoogle),"SpatialPolygons")
         crs(trapsPoly) <- crs(tempGoogleMap)

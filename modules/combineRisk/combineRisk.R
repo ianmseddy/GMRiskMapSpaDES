@@ -47,44 +47,19 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
     init = {
       ### check for more detailed object dependencies:
       ### (use `checkObject` or similar)
+      sim <- scheduleEvent(sim, time(sim) + 2.5, "combineRisk", "combine") 
       
       # schedule future event(s)
-      sim <- scheduleEvent(sim, start(sim), "combineRisk", "checkinputs")
-    },
-    plot = {
-      # do stuff for this event
-      combineRiskPlot(sim)
-      
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "combineRisk", "plot")
-    },
-    checkinputs = {
-      
-      # schedule future event(s)
-      if( is.null(sim$riskList) ) { 
-        sim <- scheduleEvent(sim, time(sim) + 0.1, "combineRisk", "checkinputs", .last())
-      } else { 
-        sim <- scheduleEvent(sim, time(sim), "combineRisk", "combine") 
-      }
       
     },
     combine = {
       # do stuff for this event
       sim <- Cache(combineRiskCombine, sim, userTags = "combineRiskCombine")
-      
+      sim <- combineRiskPlot(sim)
       # schedule future event(s)
-         # schedule first 'plot' event
-      if(is.na(P(sim)$.plotInitialTime)) {
-        # if .plotInitialTime=NA, don't schedule plot event
-      } else if( "plot" %in% subset(completed(sim), completed(sim)$moduleName=="combineRisk")$eventType == FALSE) {
-        if( time(sim) >= P(sim)$.plotInitialTime) {
-          sim <- scheduleEvent(sim, time(sim), "combineRisk", "plot")
-        } else { 
-          sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "combineRisk", "plot")
-        }
-      }
-      # sim <- scheduleEvent(sim, time(sim) + increment, "combineRisk", "combine")
-      
+        
+      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "combineRisk", "plot")
+     
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -124,6 +99,7 @@ combineRiskCombine <- function(sim) {
     names(totalRisk) <- c("totalRisk")
     return(totalRisk)
   })
+ 
   names(outList) <- paste(names(sim$dataList))
   sim$totalRisk <- outList
   

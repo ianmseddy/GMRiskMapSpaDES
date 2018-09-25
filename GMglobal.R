@@ -1,7 +1,6 @@
 
 library(SpaDES)
-
-
+library(raster)
 #setwd("...../GMRiskMapSpaDES/") # <---- change ..... to your directory
 #setwd("/Users/kaitlynschyrmann/Desktop/SpaDES GM Module 2018/GMRiskMapSpaDES/")
 # setwd("C:/Brian/Projects/Spades/GMRiskMapSpaDES/")
@@ -14,17 +13,10 @@ setPaths(cachePath = file.path("cache"),
 paths <- getPaths()
 times <- list(start=1.0, end=10.5, timeunit="year")
 
-ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
-                                             xmn = c(-2040398, -1942000), #
-                                             xmx = c(-1948121, -1873500),#
-                                             ymn = c(1312569, 1359500),#
-                                             ymx = c(1434588, 1420300))#
-objects <- list(ROI = ROIsub) # predefined roi character string
-#objects <- list(roi = testROI) # SpatialPolygon roi - script to create testROI object below
-#objects <- list() # no roi - select on map
 
-modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations","trapsReportPDF",  
-                "combineRisk", "loadLcc2015", "lccToTreeCover", "calculateRisk", "leafletRiskMap")
+modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
+                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap") 
+#,"treeCoverClassify",  "trapsReportPDF"
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                    loadGMTraps = list(.plotInitialTime = 11),
@@ -38,26 +30,26 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                                         .plotInitialTime = 11),
                    combineRisk = list(.plotInitialTime = 11,
                                       hiRisk1 = 0.5,
-                                      hiRisk2 = 10,
-                                      mapHiRisk = TRUE),
+                                      hiRisk2 = 3,
+                                      mapHiRisk = TRUE),#
                    leafletRiskMap = list(basemap = "satellite",
                                          mapRisk = TRUE,
                                          mapHiRisk = TRUE,
                                          dataLayers = list("traps"),
-                                         riskLayers = list("trapsRisk"), #IE commented out
+                                         riskLayers = list("trapsRisk"),
                                          .plotInitialTime = 11,
-                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet")),# 
-                   trapsReportPDF = list(dataName = "traps",
-                                         fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
-                                         saveDir=getwd(),
-                                         popDistType = "linear",
-                                         popMaxDist = 2000,
-                                         popMinDist = 750,
-                                         popMaxCatch = 8,
-                                         basemap = "roadmap",
-                                         mapRisk = TRUE,
-                                         mapHiRisk = TRUE,
-                                         .pdfInitialTime = 100)
+                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet"))#
+                   # trapsReportPDF = list(dataName = "traps",
+                   #                       fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
+                   #                       saveDir=getwd(),
+                   #                       popDistType = "linear",
+                   #                       popMaxDist = 2000,
+                   #                       popMinDist = 750,
+                   #                       popMaxCatch = 8,
+                   #                       basemap = "roadmap",
+                   #                       mapRisk = TRUE,
+                   #                       mapHiRisk = TRUE,
+                   #                       .pdfInitialTime = 100)
 )
 
 
@@ -65,8 +57,7 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
 mySim <- simInit(params = parameters, 
                  modules = modules, 
                  paths =  paths,
-                 times = times,
-                 objects = objects)
+                 times = times)
 
 
 graphics.off() 
@@ -79,6 +70,49 @@ mySim1 <- spades(mySim, debug=TRUE)
 
 
 # Testing portion
+# Test where ROI = dataframe
+# ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
+#                                              xmn = c(-2040398, -1942000), #
+#                                              xmx = c(-1948121, -1873500),#
+#                                              ymn = c(1312569, 1359500),#
+#                                              ymx = c(1434588, 1420300))#
+# objects <- list(ROI = ROIsub) # predefined ROI using dataframe
+#
+#Test where ROI = list of spatialPolygonsDataFrames
+myCrs <- "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+
+#For some reason the SPDF couldn't be piped. 
+LowerMainland = data.frame(x_coord = c(-1942000, -1942000, -1873500, -1873500), 
+                           y_coord = c(1359500, 1420300, 1420300, 1359500))
+LowerMainland <- Polygon(LowerMainland)
+LowerMainland <- Polygons(list(LowerMainland), 1)
+LowerMainland <- SpatialPolygons(list(LowerMainland))
+LowerMainland <- SpatialPolygonsDataFrame(LowerMainland, data = data.frame("ID" = "Lower Mainland"))
+
+VancouverIsland = data.frame(x_coord = c(-1948121, -1948121, -2040398, -2040398), 
+                             y_coord = c(1434588, 1312569, 1312569 , 1434588)) 
+VancouverIsland <-  Polygon(VancouverIsland)
+VancouverIsland <-   Polygons(list(VancouverIsland), 1)
+VancouverIsland <-  SpatialPolygons(list(VancouverIsland))
+VancouverIsland <- SpatialPolygonsDataFrame(VancouverIsland, data = data.frame("ID" = "Vancouver Island"))
+
+crs(VancouverIsland) <- myCrs 
+crs(LowerMainland) <- myCrs
+
+myROI = list("Vancouver Island" = VancouverIsland, "Lower Mainland" = LowerMainland)
+
+#test
+objects = list(ROI = myROI)
+mySim <- simInit(params = parameters, 
+                 modules = modules, 
+                 paths =  paths,
+                 times = times,
+                 objects = objects)
+
+mySim1 <- spades(mySim, debug = TRUE)
+
+
+
 
 testROI <- mySim1$ROI
 

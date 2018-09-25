@@ -58,21 +58,15 @@ doEvent.calculateRisk = function(sim, eventTime, eventType, debug = FALSE) {
       sim <- calculateRiskInit(sim)
       
       # schedule future event(s)
-      sim <- scheduleEvent(sim, start(sim)+0.2, "calculateRisk", "risk")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "calculateRisk", "save")
+      sim <- scheduleEvent(sim, start(sim) + 2, "calculateRisk", "risk")
+
     },
     plot = {
       # do stuff for this event
       calculateRiskPlot(sim)
       
       # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "calculateRisk", "plot")
-    },
-    save = {
-      # do stuff for this event
-      
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "calculateRisk", "save")
+ 
     },
     risk = {
       # do stuff for this event
@@ -184,9 +178,12 @@ calculateRiskTranslate <- function(sim) {
           
         }
       } else { #data layer not included in SpeciesRiskParams.csv
-        message(paste0('Message: "', names(dataList[ii]),'" ', 
-                       "not matched in ~/modules/calculateRisk/data/SpeciesRiskParams.csv. ",
-                       'No risk translation completed for "', names(dataList[ii]),'".'))
+        
+        if (names(dataList[ii]) != "water") {
+          message(paste0('Message: "', names(dataList[ii]),'" ', 
+                         "not matched in ~/modules/calculateRisk/data/SpeciesRiskParams.csv. ",
+                         'No risk translation completed for "', names(dataList[ii]),'".'))
+        }
       }
     }
     return(riskList)

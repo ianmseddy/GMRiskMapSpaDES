@@ -22,7 +22,7 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
+    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
@@ -45,35 +45,20 @@ doEvent.lccToTreeCover = function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- lccToTreeCoverInit(sim)
       
-
-      sim <- scheduleEvent(sim, start(sim)+0.1, "lccToTreeCover", "reclass")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "lccToTreeCover", "save")
-    },
-    plot = {
-
-      lccToTreeCoverPlot(sim)
-      
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "lccToTreeCover", "plot")
-      
-    },
-    save = {
+      sim <- scheduleEvent(sim, start(sim)+ 1, "lccToTreeCover", "reclass")
 
     },
+   
     reclass = {
       # do stuff for this event
       sim <- Cache(lccToTreeCoverReclassify, sim)
       
       # schedule future event(s)
-      if(is.na(P(sim)$.plotInitialTime)) {
-        # if .plotInitialTime=NA, don't schedule plot event
-      } else if( "plot" %in% subset(completed(sim), completed(sim)$moduleName=="lccToTreeCover")$eventType == FALSE) {
-        if( time(sim) >= P(sim)$.plotInitialTime) {
-          sim <- scheduleEvent(sim, time(sim), "lccToTreeCover", "plot")
-        } else { 
-          sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "lccToTreeCover", "plot")
+      if(!is.na(P(sim)$.plotInitialTime)) {
+        lccToTreeCoverPlot(sim)
         }
-      }
-      # sim <- scheduleEvent(sim, time(sim) + increment, "lccToTreeCover", "templateEvent")
+
+      
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -138,7 +123,10 @@ lccToTreeCoverlccReclass <- function(i, dataList, legend){
     dataList[[i]][["treeCover"]] <- treeCover
     dataList[[i]][["lcc"]] <- NULL
     
-  } else { message("no lcc dataset provided for ", names(dataList[i]), ". Cannot be reclassified.")  }
+  } else {
+    browser()
+    message("no lcc dataset provided for ", names(dataList[i]), ". Cannot be reclassified.")  
+    }
   
   return(dataList[[i]])
   

@@ -59,28 +59,13 @@ doEvent.leafletRiskMap = function(sim, eventTime, eventType, debug = FALSE) {
       sim <- leafletRiskMapInit(sim)
       
       # schedule future event(s)
-      sim <- scheduleEvent(sim, start(sim), "leafletRiskMap", "checkinputs", .last())
+      
+      sim <- scheduleEvent(sim, start(sim) + 4, "leafletRiskMap", "checkinputs", .last())
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "leafletRiskMap", "save")
     },
-    checkinputs = {
-      # schedule future event(s)
-      ## checking if inputs exist yet - all possible combinations of dataLayers, riskLayers & totalRisk/HiRisk
-      hasData <- !is.null(sim$dataList)
-      hasRisk <- !is.null(sim$riskList) || !is.null(sim$totalRisk)
-      needsData <- !is.na(P(sim)$dataLayers)
-      needsRisk <- P(sim)$mapRisk == TRUE || P(sim)$mapHiRisk == TRUE
-      #sim will always have data and risk layers if it has totalRisk
+   
       
-      if (needsData && hasData && needsRisk && hasRisk) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else if (!needsData && !needsRisk) {
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap")
-      } else if (needsData && hasData && !needsRisk) { #doesn't need risk
-        sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "basemap") 
-      } else { sim <- scheduleEvent(sim, time(sim)+0.1, "leafletRiskMap", "checkinputs", .last()) } # inputs not all available
     
-      
-    },
     basemap = {
       # do stuff for this event
       sim <- leafletRiskMapBasemap(sim)
@@ -144,7 +129,7 @@ leafletRiskMapInit <- function(sim) {
 
 ### plot event:
 leafletRiskMapPlot <- function(sim) {
-  browser()
+
    if (length(sim$leafletMap) != length(P(sim)$fileName)) {
     stop("Number of leaflet file names do not match number of ROIs")
   }
@@ -164,7 +149,7 @@ leafletRiskMapPlot <- function(sim) {
 ### basemap event:
 leafletRiskMapBasemap <- function(sim) {
 
-  output <- Cache(lapply, 1:length(sim$ROI), function(i, 
+  output <- lapply(1:length(sim$ROI), function(i, 
                                          leafletMap = sim$leafletMap, 
                                          ROI = sim$ROI,
                                          basemap = P(sim)$basemap){
@@ -199,7 +184,7 @@ leafletRiskMapBasemap <- function(sim) {
 leafletRiskMapLeafTotalRisk <- function(sim) {
   
   
-  output <- Cache(lapply, 1:length(sim$ROI), function(i, 
+  output <- lapply(1:length(sim$ROI), function(i, 
                                                      totalRisk = sim$totalRisk,
                                                      dataList = sim$dataList,
                                                      leafletMap = sim$leafletMap){
@@ -229,7 +214,7 @@ leafletRiskMapLeafTotalRisk <- function(sim) {
 ### maphirisk event:
 leafletRiskMapLeafHiRisk <- function(sim) {
   
-  output <- Cache(lapply, 1:length(sim$ROI), function(i,
+  output <- lapply(1:length(sim$ROI), function(i,
                                                      leafletMap = sim$leafletMap, 
                                                      dataList = sim$dataList,
                                                      highRisk = sim$highRisk) {
@@ -259,7 +244,7 @@ leafletRiskMapLeafHiRisk <- function(sim) {
 ### maprisk event:
 leafletRiskMapLeafRisk  <- function(sim) {
   
-  output <- Cache(lapply,1:length(sim$ROI), function(i, riskLayers = P(sim)$riskLayers,
+  output <- lapply(1:length(sim$ROI), function(i, riskLayers = P(sim)$riskLayers,
                                                dataList = sim$dataList,
                                                leafletMap = sim$leafletMap,     
                                                riskList = sim$riskList){
@@ -274,11 +259,12 @@ leafletRiskMapLeafRisk  <- function(sim) {
       temp <- leaflet::projectRasterForLeaflet(riskList[[riskLayers[[ii]]]], method = "bilinear")
       if("water" %in% names(dataList)) {
         waterLeaflet <- leaflet::projectRasterForLeaflet(dataList$water, method = "bilinear")
-        temp <- raster::mask(temp, waterLeaflet, inverse=TRUE)
+        temp <- Cache(raster::mask,temp, waterLeaflet, inverse=TRUE)
       }
       leafletMap <- leaflet::addRasterImage(leafletMap, temp, 
                                                 colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
     }
+    
   return(leafletMap)
   })
   
@@ -352,6 +338,7 @@ leafletRiskMapLeafData <- function(sim) {
       }
     }
   }
+  
   return(invisible(sim))
 }
 
@@ -362,6 +349,7 @@ leafletSpatialPoints <- function(inList, temp) {
   
   inList <- leaflet::addCircles(inList, lng = sp::coordinates(temp)[,1], lat = sp::coordinates(temp)[,2], 
                                         opacity = 1, popup = temp$popup, color = temp$colour)
+  
   return(inList)
 }
 

@@ -21,7 +21,6 @@ defineModule(sim, list(
     defineParameter("crs", "character", "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0", NA, NA, "PROJ.4 character string defining desired coordinate reference system"),
     defineParameter("res", "numeric", 30, 5, 500, "Desired raster resolution, in meters. Single number or vector of two numbers"),
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"), 
@@ -34,9 +33,7 @@ defineModule(sim, list(
                  desc = "data.frame defining regions of interest and their extents. Headers should include name, ymin, ymax, xmin, and xmax", sourceURL = NA)
   ),
   outputObjects = bind_rows(
-    #createsOutput("objectName", "objectClass", "output object description", ...),
     createsOutput(objectName = "dataList", objectClass = "List", desc = "List of cropped & reprojected data")
-    # createsOutput(objectName = "ROI", objectClass = "SpatialPolygons", desc = "Polygon defining region of interest (ROI), in desired PROJ.4 CRS")
   )
 ))
 
@@ -48,40 +45,28 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
      
       # do stuff for this event
       sim <- cropReprojectDataInit(sim)
       
       # schedule future event(s) 
-      sim <- scheduleEvent(sim, start(sim), "cropReprojectData", "gis")
+      sim <- scheduleEvent(sim, start(sim) + 0.1, "cropReprojectData", "gis")
     },
     plot = {
       # do stuff for this event
       if (P(sim)$usePlot == TRUE) {
         cropReprojectDataPlot(sim)
         # schedule future event(s)
-        sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "cropReprojectData", "plot")
       }
     },
     
     gis = {
       # do stuff for this event
-      
       sim <- cropReprojectDataGIS(sim)
       
       # schedule future event(s)
-      if(is.na(P(sim)$.plotInitialTime)) {
-        # if .plotInitialTime=NA, don't schedule plot event
-      } else if( "plot" %in% subset(completed(sim), completed(sim)$moduleName=="cropReprojectData")$eventType == FALSE) {
-        if( time(sim) >= P(sim)$.plotInitialTime) {
-          sim <- scheduleEvent(sim, time(sim), "cropReprojectData", "plot")
-        } else { 
-          sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "cropReprojectData", "plot")
-        }
-      }
-      # sim <- scheduleEvent(sim, time(sim) + increment, "cropReprojectData", "gis")
+      sim <- scheduleEvent(sim, time(sim), "cropReprojectData", "plot")
+
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -118,7 +103,7 @@ cropReprojectDataInit <- function(sim) {
         res(outRas) <- simRes
         return(outRas)
       })
-      names(outList) <- naems(sim$ROI)
+      names(outList) <- names(sim$ROI)
       sim$ROI <- outList
     }
   } # ROI is already a list of rasters
@@ -181,12 +166,12 @@ cropReprojectDataGIS <- function(sim) {
       
       if (class(subFile[[1]]) != "SpatialPointsDataFrame") {
       
-        output <- Cache(postProcess, x = subFile[[1]], rasterToMatch = subROI[[1]], 
+        output <- Cache(postProcess, x = subFile[[1]], rasterToMatch = subROI[[1]], method = 'ngb', 
                       filename2 = paste(dir,"/", names(subFile), "_", names(subROI), sep = ""))
       }else{
         #Crop and reproject the old fashioned way
-        output <- projectInputs(x = subFile[[1]], targetCRS = crs(subROI[[1]]))
-        output <- cropInputs(x = output, subROI[[1]], filename = paste(dir, "/", names(subFile), "_", names(subROI), sep = ""))
+        output <- Cache(projectInputs, x = subFile[[1]], targetCRS = crs(subROI[[1]]))
+        output <- Cache(cropInputs, x = output, subROI[[1]], filename = paste(dir, "/", names(subFile), "_", names(subROI), sep = ""))
       }
         # output@bbox <- raster::as.matrix(extent(subROI[[1]]))
       if (is.null(output)) {
@@ -211,11 +196,11 @@ cropReprojectDataGIS <- function(sim) {
 .inputObjects <- function(sim) {
   
   if(!suppliedElsewhere("ROI", sim)) {
-  sim$ROI <- data.frame(Region = c("SouthwestBC", "VancouverIsland", "LowerMainland"),
-                        xmn = c(-2118298, -2040398, -1942000),
-                        xmx = c(-1770148, -1948121, -1873500),
-                        ymn = c(1255505, 1312569, 1359500),
-                        ymx = c(1546415, 1434588, 1420300))
+  sim$ROI <- data.frame(Region = c("VancouverIsland", "LowerMainland"),
+                        xmn = c(-2040398, -1942000),
+                        xmx = c(-1948121, -1873500),
+                        ymn = c(1312569, 1359500),
+                        ymx = c(1434588, 1420300))
   
   }
   
