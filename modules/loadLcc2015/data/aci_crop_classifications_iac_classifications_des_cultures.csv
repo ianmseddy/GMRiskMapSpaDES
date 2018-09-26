@@ -1,0 +1,69 @@
+﻿Code ,Label / Étiquette,Colour / Couleur,,
+,,R,G,B
+10,Cloud / Nuages,0,0,0
+20,Water / Eau,51,51,255
+30,Exposed Land and Barren / Sols nus et terres stériles,153,102,102
+34,Urban and Developed / Milieu urbain et bâti,204,102,153
+35,Greenhouses / Serres,225,225,225
+50,Shrubland / Arbustaie,255,255,0
+80,Wetland / Terres humides,153,51,153
+110,Grassland / Prairies,204,204,0
+120,Agriculture (undifferentiated) / Agriculture (indifférenciée),204,102,0
+122,Pasture and Forages / Pâturage et Cultures fourragères,255,204,51
+130,Too Wet to be Seeded / Trop humide pour l’ensemencement,120,153,246
+131,Fallow / Jachère,255,153,0
+132,Cereals / Céréales,102,0,0
+133,Barley / Orge,218,227,29
+134,Other Grains / Autres céréales,214,204,0
+135,Millet / Millet,210,219,37
+136,Oats / Avoine,209,213,43
+137,Rye / Seigle,202,206,50
+138,Spelt / Épeautre,195,198,58
+139,Triticale / Triticale,185,188,68
+140,Wheat / Blé,167,179,77
+141,Switchgrass / Panic érigé,185,198,78
+142,Sorghum / Sorgho,153,153,0
+145,Winter Wheat / Blé d'hiver,146,165,91
+146,Spring Wheat / Blé de printemps,128,151,105
+147,Corn / Maïs,255,255,153
+148,Tobacco / Tabac,152,136,124
+149,Ginseng / Ginseng,121,155,147
+150,Oilseeds / Oléagineux,94,162,99
+151,Borage / Bourrache,82,174,119
+152,Camelina / Caméline,65,191,122
+153,Canola and Rapeseed / Canola et Colza,214,255,112
+154,Flaxseed / Lin,140,140,255
+155,Mustard / Moutarde,214,204,0
+156,Safflower / Carthame,255,127,0
+157,Sunflower / Tournesol,49,84,145
+158,Soybeans / Soya,204,153,51
+160,Pulses / Légumineuses,137,110,67
+162,Peas / Pois,143,108,61
+167,Beans / Haricots,130,101,74
+174,Lentils / Lentilles,184,89,0
+175,Vegetables / Légumes,183,75,21
+176,Tomatoes / Tomates,255,138,138
+177,Potatoes / Pomme de terre,255,204,204
+178,Sugarbeets / Betterave à sucre,111,85,202
+179,Other Vegetables / Autres légumes,255,204,255
+180,Fruits / Fruits,220,84,36
+181,Berries / Petits fruits,208,90,48
+182,Blueberry / Bleuet,210,0,0
+183,Cranberry / Canneberge,204,0,0
+185,Other Berry / Autres petits fruits,220,50,0
+188,Orchards / Vergers,255,102,102
+189,Other Fruits / Autres fruits,197,69,59
+190,Vineyards / Vignobles,116,66,189
+191,Hops / Houblon,255,204,204
+192,Sod / Gazon en plaques,181,251,5
+193,Herbs / Fines herbes,204,255,5
+194,Nursery / Pépinière,7,249,140
+195,Buckwheat / Sarrasin,0,255,204
+196,Canaryseed / Graines à canaris,204,51,204
+197,Hemp / Chanvre,142,118,114
+198,Vetch / Vesce,177,149,79
+199,Other Crops / Autres cultures,116,154,102
+200,Forest (undifferentiated) / Forêt (indifférenciée),0,153,0
+210,Coniferous / Forêt de conifères,0,102,0
+220,Broadleaf / Forêt de feuillus,0,204,0
+230,Mixedwood / Forêt mixte,204,153,0
