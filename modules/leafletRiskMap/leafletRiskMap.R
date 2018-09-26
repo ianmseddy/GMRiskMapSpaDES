@@ -60,53 +60,22 @@ doEvent.leafletRiskMap = function(sim, eventTime, eventType, debug = FALSE) {
       
       # schedule future event(s)
       
-      sim <- scheduleEvent(sim, start(sim) + 4, "leafletRiskMap", "checkinputs", .last())
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "leafletRiskMap", "save")
+      sim <- scheduleEvent(sim, start(sim) + 4, "leafletRiskMap", "basemap", .last())
+
     },
-   
-      
     
     basemap = {
       # do stuff for this event
       sim <- leafletRiskMapBasemap(sim)
       
       # schedule future event(s)
-      if(P(sim)$mapRisk == TRUE) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "maptotalrisk")
-      if(P(sim)$mapHiRisk == TRUE) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "maphirisk")
-      if(!is.na(P(sim)$dataLayers)) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "mapdata")
-      if(!is.na(P(sim)$riskLayers)) sim <- scheduleEvent(sim, time(sim), "leafletRiskMap", "maprisk")  
-      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "leafletRiskMap", "plot", .last())
+      if(P(sim)$mapRisk == TRUE) sim <- leafletRiskMapLeafTotalRisk(sim)
+      if(P(sim)$mapHiRisk == TRUE) sim <- leafletRiskMapLeafHiRisk(sim)
+      if(!is.na(P(sim)$dataLayers)) sim <- leafletRiskMapLeafData(sim)
+      if(!is.na(P(sim)$riskLayers))  sim <- leafletRiskMapLeafRisk(sim)
+      if(!is.na(P(sim)$.plotInitialTime)) sim <- leafletRiskMapPlot(sim)
     },
-    maptotalrisk = {
-      # do stuff for this event
-      sim <- leafletRiskMapLeafTotalRisk(sim)
-      
-      # schedule future event(s)
-    },
-    maphirisk = {
-      # do stuff for this event
-      sim <- leafletRiskMapLeafHiRisk(sim)
-      
-      # schedule future event(s)
-    },
-    mapdata = {
-      # do stuff for this event
-      sim <- leafletRiskMapLeafData(sim)
-      
-      # schedule future event(s)
-    },
-    maprisk = {
-      # do stuff for this event
-      sim <- leafletRiskMapLeafRisk(sim)
-      
-      # schedule future event(s)
-    },
-    plot = {
-      # do stuff for this event
-      sim <- leafletRiskMapPlot(sim)
 
-      # schedule future event(s)
-    },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
   )

@@ -15,10 +15,9 @@ times <- list(start=1.0, end=10.5, timeunit="year")
 
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
-                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap", "treeCoverClassify") 
-#,  "trapsReportPDF"
-                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap",  "trapsReportPDF") 
-#,"treeCoverClassify"
+                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap") 
+#,  "trapsReportPDF", "treeCoverClassify"
+
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                    loadGMTraps = list(.plotInitialTime = 11),
@@ -73,13 +72,13 @@ mySim1 <- spades(mySim, debug=TRUE)
 
 # Testing portion
 # Test where ROI = dataframe
-# ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
-#                                              xmn = c(-2040398, -1942000), #
-#                                              xmx = c(-1948121, -1873500),#
-#                                              ymn = c(1312569, 1359500),#
-#                                              ymx = c(1434588, 1420300))#
-# objects <- list(ROI = ROIsub) # predefined ROI using dataframe
-#
+ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
+                                             xmn = c(-2040398, -1942000), #
+                                             xmx = c(-1948121, -1873500),#
+                                             ymn = c(1312569, 1359500),#
+                                             ymx = c(1434588, 1420300))#
+objects <- list(ROI = ROIsub) # predefined ROI using dataframe
+
 #Test where ROI = list of spatialPolygonsDataFrames
 myCrs <- "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
