@@ -142,7 +142,7 @@ trapsReportPDFopen <- function(sim) {
     mapGoogle <- 1
     while (class(mapGoogle) != "RasterLayer" ) {
       options(warn = -1)
-      browser()
+     
       mapGoogle <- try(dismo::gmap(x = extent(roiGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1),
                          silent = TRUE)
       Attempt = Attempt + 1
@@ -231,10 +231,10 @@ trapsReportPDFopen <- function(sim) {
       Attempt = Attempt + 1
       Sys.sleep(0.5)
       if (Attempt > 100){ 
-        browser() 
+        
         stop("Network connectivity problems are preventing download of Google map...")}
       }
-    optiosn(warn=0)
+    options(warn=0)
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
 
     #### Add basemap ####
