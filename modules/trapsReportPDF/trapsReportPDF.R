@@ -147,7 +147,7 @@ trapsReportPDFopen <- function(sim) {
                          silent = TRUE)
       Attempt = Attempt + 1
       Sys.sleep(0.5)
-      if (Attempt > 100){stop("Network connectivity problems are preventing download of Google map...")}
+      if (Attempt > 10){stop("Network connectivity problems are preventing download of Google map...")}
       }
     options(warn = 0)
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
@@ -230,7 +230,7 @@ trapsReportPDFopen <- function(sim) {
                          silent = TRUE)
       Attempt = Attempt + 1
       Sys.sleep(0.5)
-      if (Attempt > 100){ 
+      if (Attempt > 10){ 
         
         stop("Network connectivity problems are preventing download of Google map...")}
       }
@@ -356,7 +356,7 @@ trapsReportPDFopen <- function(sim) {
                              silent = TRUE)
           Attempt = Attempt + 1
           Sys.sleep(0.5)
-          if(Attempt > 100){stop("Network connectivity problems are preventing download of Google map...")}
+          if(Attempt > 10){stop("Network connectivity problems are preventing download of Google map...")}
           }
         options(warn=0)
         # checking all traps are on google map - if not, zoom out 1 zoom level

@@ -15,11 +15,11 @@ times <- list(start=1.0, end=10.5, timeunit="year")
 
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
-                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap",  "trapsReportPDF") 
-#, "treeCoverClassify"
+                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap") 
+#, "treeCoverClassify",  "trapsReportPDF"
 
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
-parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
+parameters <- list(loadLcc2015 = list(.plotInitialTime = NA),
                    loadGMTraps = list(.plotInitialTime = 11),
                    loadPortLocations = list(.plotInitialTime = 11),
                    cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs",
@@ -39,18 +39,18 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = 11),
                                          dataLayers = list("traps"),
                                          riskLayers = list("trapsRisk"),
                                          .plotInitialTime = 11,
-                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet")),#
-                   trapsReportPDF = list(dataName = "traps",
-                                         fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
-                                         saveDir=getwd(),
-                                         popDistType = "linear",
-                                         popMaxDist = 2000,
-                                         popMinDist = 750,
-                                         popMaxCatch = 8,
-                                         basemap = "roadmap",
-                                         mapRisk = TRUE,
-                                         mapHiRisk = TRUE,
-                                         .pdfInitialTime = 100)
+                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet"))#
+                   # trapsReportPDF = list(dataName = "traps",
+                   #                       fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
+                   #                       saveDir=getwd(),
+                   #                       popDistType = "linear",
+                   #                       popMaxDist = 2000,
+                   #                       popMinDist = 750,
+                   #                       popMaxCatch = 8,
+                   #                       basemap = "roadmap",
+                   #                       mapRisk = TRUE,
+                   #                       mapHiRisk = TRUE,
+                   #                       .pdfInitialTime = 100)
 )
 
 
@@ -109,6 +109,12 @@ mySim <- simInit(params = parameters,
                  paths =  paths,
                  times = times,
                  objects = objects)
+
+graphics.off() 
+windows(xpos=1940,ypos=10,width=21,height=11,xpinch = 114, ypinch = 114)
+#quartz(w=6,h=6)
+dev(width = 6, height = 6)
+clearPlot()
 
 mySim1 <- spades(mySim, debug = TRUE)
 

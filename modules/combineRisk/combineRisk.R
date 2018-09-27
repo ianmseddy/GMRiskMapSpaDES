@@ -75,9 +75,10 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
 combineRiskPlot <- function(sim) {
   for (i in 1:length(sim$totalRisk)) {
     clearPlot()
-    Plot(sim$totalRisk[i], title = names(sim$totalRisk[i]), cols=rev(heat.colors(16))) #legendRange = 0:1
+    browser()
+    Plot(sim$totalRisk[[i]][["totalRisk"]], title = names(sim$totalRisk[i]), cols=rev(heat.colors(16))) #legendRange = 0:1
     if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
-      Plot(sim$dataList[[i]][["water"]], addTo= names(sim$totalRisk[i]))
+      Plot(sim$dataList[[i]][["water"]], addTo= "sim$totalRisk[[i]][['totalRisk']]", title = "")
       }
     }   
   return(invisible(sim))
@@ -134,30 +135,5 @@ combineRiskCombine <- function(sim) {
 
 #.inputObjects <- function(sim) {
 
-####### Create data if sim$riskList not provided
-#  
-#  if(is.null(sim$riskList)) {
-#    sim$riskList <- list()
-#    # example risk 1
-#    example1Risk <- raster::raster(ext=raster::extent(-1936248,-1910000,1406079,1415135), 
-#                                   resolution=30, 
-#                                   crs=raster::crs("+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"))
-#    points <- SpaDES.tools::initiateAgents(example1Risk, 5) 
-#    example1Risk <- raster::distanceFromPoints(example1Risk, points) 
-#    values(example1Risk) <- abs((values(example1Risk) - max(values(example1Risk))))/max(values(example1Risk))
-#    names(example1Risk) <- "example1Risk"
-#    sim$riskList[["example1Risk"]] <- example1Risk
-#    
-#    #example risk 2
-#    points <- SpaDES.tools::initiateAgents(example1Risk, 10) 
-#    example2Risk <- raster::distanceFromPoints(example1Risk, points) 
-#    values(example2Risk) <- abs((values(example2Risk) - max(values(example2Risk))))/max(values(example2Risk))
-#    names(example2Risk) <- "example2Risk"
-#    sim$riskList[["example2Risk"]] <- example2Risk
-#   
-#  }
-
-#  return(invisible(sim))
-#}
 
 

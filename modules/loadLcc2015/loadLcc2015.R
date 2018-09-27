@@ -7,7 +7,8 @@ defineModule(sim, list(
   name = "loadLcc2015",
   description = "Module imports the AAFC 2015 landCover dataset",
   keywords = c("lcc", "tree cover"),
-  authors = person("Kaitlyn", "Schurmann", email = "kdschurmann@gmail.com", role = c("aut", "cre")),
+  authors = c(person("Kaitlyn", "Schurmann", email = "kdschurmann@gmail.com", role = c("aut", "cre")),
+              person("Ian", "Eddy"), email = "ian.eddy@canada.ca", role = c("aut")),
   childModules = character(0),
   version = list(SpaDES.core = "0.1.1.9001", loadLcc2015 = "0.0.1"),
   spatialExtent = raster::extent(rep(NA_real_, 4)),
@@ -19,10 +20,7 @@ defineModule(sim, list(
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
+    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
@@ -50,24 +48,20 @@ doEvent.loadLcc2015 = function(sim, eventTime, eventType, debug = FALSE) {
 
       # schedule future event(s)
       sim <- scheduleEvent(sim, start(sim), "loadLcc2015", "format")
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "loadLcc2015", "plot")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "loadLcc2015", "save")
+      sim <- scheduleEvent(sim, start(sim), "loadLcc2015", "plot")
+
+
     },
     plot = {
       # do stuff for this event
+      if (!is.na(P(sim)$.plotInitialTime)) {
+        loadLcc2015Plot(sim) 
+      }
       
-      loadLcc2015Plot(sim) 
       
       # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "loadLcc2015", "plot")
     },
-    save = {
-      # do stuff for this event
 
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "loadLcc2015", "save")
-
-    },
     format = {
       # do stuff for this event
 
