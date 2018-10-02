@@ -75,7 +75,7 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
 combineRiskPlot <- function(sim) {
   for (i in 1:length(sim$totalRisk)) {
     clearPlot()
-    browser()
+   
     Plot(sim$totalRisk[[i]][["totalRisk"]], title = names(sim$totalRisk[i]), cols=rev(heat.colors(16))) #legendRange = 0:1
     if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
       Plot(sim$dataList[[i]][["water"]], addTo= "sim$totalRisk[[i]][['totalRisk']]", title = "")

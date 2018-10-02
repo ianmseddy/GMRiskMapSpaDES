@@ -79,7 +79,7 @@ lccToTreeCoverInit <- function(sim) {
 lccToTreeCoverPlot <- function(sim) {
   for (i in 1:length(sim$dataList)) {
     clearPlot()
-    browser()
+   
     Plot(sim$dataList[[i]][["treeCover"]], title = names(sim$dataList[[i]][["treeCover"]]))
     Plot(sim$dataList[[i]][["water"]], addTo = 'sim$dataList[[i]][["treeCover"]]', title = "")
   }
@@ -125,7 +125,7 @@ lccToTreeCoverlccReclass <- function(i, dataList, legend){
     dataList[[i]][["lcc"]] <- NULL
     
   } else {
-    browser()
+  
     message("no lcc dataset provided for ", names(dataList[i]), ". Cannot be reclassified.")  
     }
   
