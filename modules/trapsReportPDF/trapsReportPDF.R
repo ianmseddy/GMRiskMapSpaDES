@@ -33,8 +33,6 @@ defineModule(sim, list(
     defineParameter("mapHiRisk", "logical", FALSE, NA, NA, "Logical of whether to map hiRisk to PDF map"),
     defineParameter(".pdfInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first pdf event should occur"),
     defineParameter(".pdfInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between pdf events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
@@ -60,7 +58,7 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
      
       # schedule future event(s)
       sim <- scheduleEvent(sim, start(sim), "trapsReportPDF", "checkinputs", .last())
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "trapsReportPDF", "save")
+
     },
     checkinputs = {
       

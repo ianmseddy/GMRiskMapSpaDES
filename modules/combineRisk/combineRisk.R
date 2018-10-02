@@ -18,10 +18,7 @@ defineModule(sim, list(
   reqdPkgs = list("raster"),
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
+    defineParameter("usePlot", "logical", TRUE, NA, NA, "This describes whether the module include plotting"),
     defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"), 
     defineParameter("hiRisk1", "numeric", 0.5, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
     defineParameter("hiRisk2", "numeric", 10.0, 0, 1, "If mapHiRisk=TRUE, value between 0 and 1 defining minimum risk classified as high risk"),
@@ -54,12 +51,11 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
     },
     combine = {
       # do stuff for this event
-      sim <- Cache(combineRiskCombine, sim, userTags = "combineRiskCombine")
-      sim <- combineRiskPlot(sim)
-      # schedule future event(s)
-        
-      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "combineRisk", "plot")
-     
+      sim <- combineRiskCombine(sim)
+      if ((P(sim)$usePlot)) {
+        sim <- combineRiskPlot(sim)
+       }
+      
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -75,10 +71,9 @@ doEvent.combineRisk = function(sim, eventTime, eventType, debug = FALSE) {
 combineRiskPlot <- function(sim) {
   for (i in 1:length(sim$totalRisk)) {
     clearPlot()
-   
     Plot(sim$totalRisk[[i]][["totalRisk"]], title = names(sim$totalRisk[i]), cols=rev(heat.colors(16))) #legendRange = 0:1
     if("water" %in% names(sim$dataList[[i]])) { #if water is a layer in dataList, add to risk maps
-      Plot(sim$dataList[[i]][["water"]], addTo= "sim$totalRisk[[i]][['totalRisk']]", title = "")
+      Plot(sim$dataList[[i]][["water"]], addTo= 'sim$totalRisk[[i]][["totalRisk"]]', title = "")
       }
     }   
   return(invisible(sim))
@@ -134,6 +129,3 @@ combineRiskCombine <- function(sim) {
 }
 
 #.inputObjects <- function(sim) {
-
-
-

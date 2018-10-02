@@ -18,11 +18,9 @@ defineModule(sim, list(
   reqdPkgs = list("raster", "reproducible", "quickPlot"),
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
+    defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"),
+    defineParameter("usePlot", "logical", TRUE, NA, NA, "Should this module include plotting")
   ),
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
@@ -54,7 +52,7 @@ doEvent.lccToTreeCover = function(sim, eventTime, eventType, debug = FALSE) {
       sim <- Cache(lccToTreeCoverReclassify, sim)
       
       # schedule future event(s)
-      if(!is.na(P(sim)$.plotInitialTime)) {
+      if(P(sim)$usePlot) {
         lccToTreeCoverPlot(sim)
         }
 

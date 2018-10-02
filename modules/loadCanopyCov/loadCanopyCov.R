@@ -18,10 +18,7 @@ defineModule(sim, list(
   reqdPkgs = list("raster", "quickPlot"),
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
+    defineParameter("usePlot", "logical", TRUE, NA, NA, "Should module include plotting"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
@@ -43,39 +40,18 @@ doEvent.loadCanopyCov = function(sim, eventTime, eventType, debug = FALSE) {
     eventType,
     init = {
       ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
-
       # do stuff for this event
       sim <- loadCanopyCovInit(sim)
 
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "loadCanopyCov", "format")
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "loadCanopyCov", "plot")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "loadCanopyCov", "save")
     },
     plot = {
       # do stuff for this event
       
-      loadCanopyCovPlot(sim) 
-      
+      if (P(sim)$usePlot) {
+        loadCanopyCovPlot(sim) 
+      }
       # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "loadCanopyCov", "plot")
-    },
-    save = {
-      # do stuff for this event
-
-      
-      
-      
-    },
-    format = {
-      # do stuff for this event
-      
-      sim <- loadCanopyCovFormat(sim)
-      
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + increment, "loadLcc2015", "format")
-      
+     
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -100,12 +76,6 @@ loadCanopyCovPlot <- function(sim) {
 }
 
 ### format event: formatting lcc dataset
-loadCanopyCovFormat <- function(sim) {
-  
-  return(invisible(sim))
-}
-
-
 
 .inputObjects <- function(sim) {
   

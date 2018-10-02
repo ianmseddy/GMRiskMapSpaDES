@@ -18,10 +18,7 @@ defineModule(sim, list(
   reqdPkgs = list("raster","rgdal"),
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
+    defineParameter("usePlot", "logical", TRUE, NA, NA, "Should module include plotting"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
@@ -42,29 +39,19 @@ doEvent.loadGMTraps = function(sim, eventTime, eventType, debug = FALSE) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
 
       # schedule future event(s)
       sim <- scheduleEvent(sim, start(sim), "loadGMTraps", "format")
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "loadGMTraps", "plot")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "loadGMTraps", "save")
+
     },
     plot = {
       # do stuff for this event
-      loadGMTrapsPlot(sim) 
-      
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "loadGMTraps", "plot")
+      if (P(sim)$usePlot) {
+        loadGMTrapsPlot(sim) 
+      }
 
     },
-    save = {
-      # do stuff for this event
-
-      # schedule future event(s)
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "loadGMTraps", "save")
-
-          },
+   
     format = {
       # do stuff for this event
       sim <- loadGMTrapsFormat(sim)

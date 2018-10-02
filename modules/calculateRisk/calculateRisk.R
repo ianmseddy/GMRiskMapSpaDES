@@ -25,10 +25,7 @@ defineModule(sim, list(
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter("species", "character", NA, NA, NA, "Defines species of interest"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
+    defineParameter("usePlot", "logical", TRUE, NA, NA, "Should module include plotting"),
     defineParameter(".useCache", "numeric", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant")
   ),
   inputObjects = bind_rows(
@@ -51,39 +48,28 @@ doEvent.calculateRisk = function(sim, eventTime, eventType, debug = FALSE) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
-      
       # do stuff for this event
       sim <- calculateRiskInit(sim)
-      
-      # schedule future event(s)
+  
       sim <- scheduleEvent(sim, start(sim) + 2, "calculateRisk", "risk")
 
     },
-    plot = {
-      # do stuff for this event
-      calculateRiskPlot(sim)
-      
-      # schedule future event(s)
- 
-    },
+    
     risk = {
       # do stuff for this event
       sim <- Cache(calculateRiskTranslate, sim)
       
-      # schedule future event(s)
-      if(is.na(P(sim)$.plotInitialTime)) {
-        # if .plotInitialTime=NA, don't schedule plot event
-      } else if( "plot" %in% subset(completed(sim), completed(sim)$moduleName=="calculateRisk")$eventType == FALSE) {
-        if( time(sim) >= P(sim)$.plotInitialTime) {
-          sim <- scheduleEvent(sim, time(sim), "calculateRisk", "plot")
-        } else { 
-          sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "calculateRisk", "plot")
-        }
-      }
-      # sim <- scheduleEvent(sim, time(sim) + increment, "calculateRisk", "templateEvent")
+     if (P(sim)$usePlot){
+       sim <- scheduleEvent(sim, time(sim), "calculateRisk", "plot")
+     }
+    
     },
+    
+    plot = {
+      # do stuff for this event
+      calculateRiskPlot(sim)
+    },
+    
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
   )
@@ -94,8 +80,6 @@ doEvent.calculateRisk = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### init event:
 calculateRiskInit <- function(sim) {
-
-  
   return(invisible(sim))
 }
 
@@ -216,10 +200,3 @@ calculateRiskTranslate <- function(sim) {
   
   return(invisible(sim))
 }
-
-#### Risk functions in "~/modules/calculateRisk/R" folder
-
-#SpatialClasses <- c("SpatialPointsDataFrame", "SpatialLinesDataFrame", "SpatialPolygonsDataFrame", 
-#                    "SpatialMultiPointsDataFrame", "SpatialPixelsDataFrame", "SpatialGridDataFrame",
-#                    "SpatialPoints", "SpatialLines", "SpatialPolygons", "SpatialMultiPoints", "SpatialPixels", "SpatialGrid")
-

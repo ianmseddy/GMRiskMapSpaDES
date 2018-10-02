@@ -20,9 +20,6 @@ defineModule(sim, list(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter("crs", "character", "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs +towgs84=0,0,0", NA, NA, "PROJ.4 character string defining desired coordinate reference system"),
     defineParameter("res", "numeric", 30, 5, 500, "Desired raster resolution, in meters. Single number or vector of two numbers"),
-    defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated? This is generally intended for data-type modules, where stochasticity and time are not relevant"), 
     defineParameter("usePlot", "logical", FALSE, NA, NA, "Should the module plot GIS files after cropping to ROI?")
     ),
@@ -46,28 +43,25 @@ doEvent.cropReprojectData = function(sim, eventTime, eventType, debug = FALSE) {
     eventType,
     init = {
      
-      # do stuff for this event
       sim <- cropReprojectDataInit(sim)
       
-      # schedule future event(s) 
       sim <- scheduleEvent(sim, start(sim) + 0.1, "cropReprojectData", "gis")
     },
+    
+    gis = {
+      sim <- cropReprojectDataGIS(sim)
+      
+      sim <- scheduleEvent(sim, time(sim), "cropReprojectData", "plot")
+
+    },
+    
     plot = {
       # do stuff for this event
       if (P(sim)$usePlot == TRUE) {
         cropReprojectDataPlot(sim)
-        # schedule future event(s)
       }
     },
     
-    gis = {
-      # do stuff for this event
-      sim <- cropReprojectDataGIS(sim)
-      
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, time(sim), "cropReprojectData", "plot")
-
-    },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
   )
@@ -119,35 +113,34 @@ cropReprojectDataInit <- function(sim) {
 # }
 
 cropReprojectDataPlot <- function(sim) {
-  if (P(sim)$usePlot == TRUE) {
-    #Make sure that dataList is formatted correctly. Then, decide how to do this...
-    for (i in 1: length(sim$dataList)) {
-      tempSim <- sim$dataList[[i]]
-      print(paste("plotting ", names(sim$dataList[i]), sep = ""))
-      for( ii in 1:length(names(tempSim))) {
-        
-        #if only one point in data, corner points added for plotting (Plot() fails with only 1 point)
-        if( is(tempSim[[ii]], "SpatialPointsDataFrame") && length(tempSim[[ii]])==1 ) {
-          message("cropReprojectData: '", i, "' in dataList only has 1 point. ROI corner points added to map for reference.")
-          corners <- data.frame(coords.x1 = c(xmin(sim$ROI[i]), xmin(sim$ROI[i]), xmax(sim$ROI[i]), xmax(sim$ROI[i])),
-                                coords.x2 = c(ymin(sim$ROI[i]), ymax(sim$ROI[i]), ymin(sim$ROI[i]), ymax(sim$ROI[i])),
-                                ID = c("SW", "NW", "SE", "NE"))
-          coordinates(corners) <- ~coords.x1+coords.x2
-          crs(corners) <- crs(mySim$crs)
-          
-          tempdf <- plyr::rbind.fill(data.frame(tempSim[[ii]]), data.frame(corners))
-          coordinates(tempdf) <- ~coords.x1+coords.x2
-          crs(tempdf) <- P(sim)$crs
-          tempdf$col <- ifelse(is.na(tempdf[[ii]]), "white", "black")
-          tempSim[[ii]] <- tempdf
-        }
-      }
+    
+  for (i in 1: length(sim$dataList)) {
+    tempSim <- sim$dataList[[i]]
+    print(paste("plotting ", names(sim$dataList[i]), sep = ""))
+    for( ii in 1:length(names(tempSim))) {
       
-      clearPlot()
-      Plot(tempSim)
-      Sys.sleep(3)#this will write ROI to every plot
+      #if only one point in data, corner points added for plotting (Plot() fails with only 1 point)
+      if( is(tempSim[[ii]], "SpatialPointsDataFrame") && length(tempSim[[ii]])==1 ) {
+        message("cropReprojectData: '", i, "' in dataList only has 1 point. ROI corner points added to map for reference.")
+        corners <- data.frame(coords.x1 = c(xmin(sim$ROI[i]), xmin(sim$ROI[i]), xmax(sim$ROI[i]), xmax(sim$ROI[i])),
+                              coords.x2 = c(ymin(sim$ROI[i]), ymax(sim$ROI[i]), ymin(sim$ROI[i]), ymax(sim$ROI[i])),
+                              ID = c("SW", "NW", "SE", "NE"))
+        coordinates(corners) <- ~coords.x1+coords.x2
+        crs(corners) <- crs(mySim$crs)
+        
+        tempdf <- plyr::rbind.fill(data.frame(tempSim[[ii]]), data.frame(corners))
+        coordinates(tempdf) <- ~coords.x1+coords.x2
+        crs(tempdf) <- P(sim)$crs
+        tempdf$col <- ifelse(is.na(tempdf[[ii]]), "white", "black")
+        tempSim[[ii]] <- tempdf
+      }
     }
+    
+    clearPlot()
+    Plot(tempSim)
+    Sys.sleep(3)#this will write ROI to every plot
   }
+  
   return(invisible(sim))
 }
 

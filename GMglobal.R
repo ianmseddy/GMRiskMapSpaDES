@@ -20,16 +20,15 @@ modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLoca
 
 #selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
 parameters <- list(loadLcc2015 = list(.plotInitialTime = NA),
-                   loadGMTraps = list(.plotInitialTime = 11),
+                   loadGMTraps = list(usePlot = TRUE),
                    loadPortLocations = list(.plotInitialTime = 11),
-                   cropReprojectData = list(crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs",
-                                            res = 30,
-                                            .plotInitialTime = 11, 
-                                            usePlot = FALSE), 
-                   lccToTreeCover = list(.plotInitialTime = 11),
+                   cropReprojectData = list(res = 30,
+                                            usePlot = FALSE,
+                   crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"),
+                   lccToTreeCover = list(usePlot = TRUE),
                    calculateRisk = list(species = "GypsyMoth",
-                                        .plotInitialTime = 11),
-                   combineRisk = list(.plotInitialTime = 11,
+                                        usePlot = TRUE),
+                   combineRisk = list(usePlot = TRUE,
                                       hiRisk1 = 0.5,
                                       hiRisk2 = 3,
                                       mapHiRisk = TRUE),#
@@ -70,7 +69,6 @@ clearPlot()
 mySim1 <- spades(mySim, debug=TRUE) 
 
 
-# Testing portion
 # Test where ROI = dataframe
 ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
                                              xmn = c(-2040398, -1942000), #
