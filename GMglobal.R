@@ -15,22 +15,23 @@ times <- list(start=1.0, end=10.5, timeunit="year")
 
 
 modules <- list("loadCanopyCov","loadGMTraps", "cropReprojectData","loadPortLocations", "combineRisk", 
-                "loadLcc2015", "calculateRisk", "lccToTreeCover", "leafletRiskMap") 
-#, "treeCoverClassify",  "trapsReportPDF"
+               "calculateRisk", "trapsReportPDF"  , "leafletRiskMap",  "loadLcc2015", "lccToTreeCover") 
 
-#selectROI isn't much different from inputObjects so added it to cropReprojectData. Module now redundant.
-parameters <- list(loadLcc2015 = list(.plotInitialTime = NA),
-                   loadGMTraps = list(usePlot = TRUE),
+#, "treeCoverClassify", #this is an experimental, unfinished module. Need risk values for tree classes. 
+
+
+parameters <- list(loadGMTraps = list(usePlot = TRUE),
                    loadPortLocations = list(.plotInitialTime = 11),
                    cropReprojectData = list(res = 30,
                                             usePlot = FALSE,
                    crs = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"),
+                   loadLcc2015 = list(.plotInitialTime = NA),
                    lccToTreeCover = list(usePlot = TRUE),
                    calculateRisk = list(species = "GypsyMoth",
                                         usePlot = TRUE),
                    combineRisk = list(usePlot = TRUE,
                                       hiRisk1 = 0.5,
-                                      hiRisk2 = 3,
+                                      hiRisk2 = 10,
                                       mapHiRisk = TRUE),#
                    leafletRiskMap = list(basemap = "satellite",
                                          mapRisk = TRUE,
@@ -38,18 +39,18 @@ parameters <- list(loadLcc2015 = list(.plotInitialTime = NA),
                                          dataLayers = list("traps"),
                                          riskLayers = list("trapsRisk"),
                                          .plotInitialTime = 11,
-                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet"))#
-                   # trapsReportPDF = list(dataName = "traps",
-                   #                       fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
-                   #                       saveDir=getwd(),
-                   #                       popDistType = "linear",
-                   #                       popMaxDist = 2000,
-                   #                       popMinDist = 750,
-                   #                       popMaxCatch = 8,
-                   #                       basemap = "roadmap",
-                   #                       mapRisk = TRUE,
-                   #                       mapHiRisk = TRUE,
-                   #                       .pdfInitialTime = 100)
+                                         fileName = c("VancouverIsland_Leaflet","LowerMainland_Leaflet")),
+                   trapsReportPDF = list(dataName = "traps",
+                                         fileName = c("VancouverIsland_trapsReport", "LowerMainland_trapsReport"), #
+                                         saveDir=getwd(),
+                                         popDistType = "linear",
+                                         popMaxDist = 2000,
+                                         popMinDist = 750,
+                                         popMaxCatch = 8,
+                                         basemap = "roadmap",
+                                         mapRisk = TRUE,
+                                         mapHiRisk = TRUE,
+                                         .pdfInitialTime = 100)
 )
 
 

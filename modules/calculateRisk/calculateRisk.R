@@ -186,10 +186,13 @@ calculateRiskTranslate <- function(sim) {
   if(is.null(sim$riskParams)){
     if("SpeciesRiskParams.csv" %in% list.files(file.path(modulePath(sim),"calculateRisk","data"))) {
       
-      if( P(sim)$species %in% read.csv(file.path(modulePath(sim),"calculateRisk","data","SpeciesRiskParams.csv"))$species ) {
-        sim$riskParams <- subset(read.csv(file.path(modulePath(sim),"calculateRisk","data","SpeciesRiskParams.csv")), species==P(sim)$species)
+      if( P(sim)$species %in% read.csv(file.path(modulePath(sim),
+                                                 "calculateRisk","data","SpeciesRiskParams.csv"))$species ) {
+        sim$riskParams <- subset(read.csv(file.path(modulePath(sim),
+                                                    "calculateRisk","data","SpeciesRiskParams.csv")), species==P(sim)$species)
       } else {
-        stop(paste0("calculateRisk: species '", P(sim)$species, "' not found in SpeciesRiskParams.csv. Add species to csv file or select different species." )
+        stop(paste0("calculateRisk: species '", P(sim)$species, 
+                    "' not found in SpeciesRiskParams.csv. Add species to csv file or select different species." )
         )
       }
     } else {

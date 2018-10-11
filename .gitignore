@@ -36,3 +36,5 @@ ACGEO_2015_CI_BC_30m_v1_crop
 modules/loadLcc2015/data/ACGEO_2015_CI_BC_30m_v1_crop\.tif
 
 modules/loadCanopyCov/data/GlobalCanopyCover_swBC_crop\.tif
+
+BrianAPI\.R
