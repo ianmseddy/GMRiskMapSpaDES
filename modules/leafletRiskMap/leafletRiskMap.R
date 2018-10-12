@@ -134,12 +134,12 @@ leafletRiskMapBasemap <- function(sim) {
     #}
     
     switch(basemap,
-           satellite = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldImagery") },
-           roadmap = {  leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldStreetMap") },
-           hybrid = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldImagery")
-           leafletMap <- leaflet::addProviderTiles(leafletMap, "Esri.WorldTopoMap", 
+           satellite = { leafletMap <- Cache(leaflet::addProviderTiles, leafletMap, "Esri.WorldImagery") },
+           roadmap = {  leafletMap <- Cache(leaflet::addProviderTiles, leafletMap, "Esri.WorldStreetMap") },
+           hybrid = { leafletMap <- Cache(leaflet::addProviderTiles, leafletMap, "Esri.WorldImagery")
+           leafletMap <- Cache(leaflet::addProviderTiles, leafletMap, "Esri.WorldTopoMap", 
                                                        options = providerTileOptions(opacity = 0.75)) },
-           terrain = { leafletMap <- leaflet::addProviderTiles(leafletMap, "Stamen.Terrain") })
+           terrain = { leafletMap <- Cache(leaflet::addProviderTiles, leafletMap, "Stamen.Terrain") })
     return(leafletMap)
   })
   
@@ -169,7 +169,7 @@ leafletRiskMapLeafTotalRisk <- function(sim) {
       totalRiskLeaflet <- raster::mask(totalRiskLeaflet, waterLeaflet, inverse=TRUE)
     }
     
-    leafletMap <- leaflet::addRasterImage(leafletMap, totalRiskLeaflet, 
+    leafletMap <- Cache(leaflet::addRasterImage, leafletMap, totalRiskLeaflet, 
                                               colors=rev(heat.colors(16)), opacity=0.35, project=FALSE)
     return(leafletMap)  
   })

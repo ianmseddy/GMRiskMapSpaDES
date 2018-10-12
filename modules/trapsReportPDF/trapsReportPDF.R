@@ -24,7 +24,7 @@ defineModule(sim, list(
     defineParameter("dataName", "character", "traps", NA, NA, "Name of the trapping dataset in dataList to map"),
     defineParameter("fileName", "character", "trapsReport", NA, NA, "File name the PDF report will be saved as"),
     defineParameter("saveDir", "character", outputPath(sim), NA, NA, "Directory path where PDF report will be saved. Default is outputPath(sim)"),
-    defineParameter("APIKey", "character", NA, NA, NA, "API key for dismo package"),
+    defineParameter("APIKey", "logical", FALSE, NA, NA, "API key for dismo package"),
     defineParameter("popDistType", "character", "straight", NA, NA, "Shape of the population distance curve: 'straight', 'square', 'linear', 'logistic', 'gaussian'"),
     defineParameter("popMaxDist", "numeric", 2000, 0, 20000, "Distance defining the maximum search radius for traps of the same population. Must be defined."),
     defineParameter("popMinDist", "numeric", 1000, 0, 20000, "Distance defining the minimum search radius for traps of the same population"),
@@ -88,6 +88,10 @@ doEvent.trapsReportPDF = function(sim, eventTime, eventType, debug = FALSE) {
 
 ### pdfopen event:
 trapsReportPDFopen <- function(sim) {
+ 
+  if (P(sim)$APIKey == TRUE) {
+    myPass <- readline(prompt = "Please enter the API key: ")
+  }
   
   if (length(sim$dataList) != length(P(sim)$fileName)) {
     stop("Number of output fileNames does not match number of ROI")
@@ -154,7 +158,7 @@ trapsReportPDFopen <- function(sim) {
     } else {
      
       mapGoogle <- gmapAPI(x = extent(roiGoogle), type = P(sim)$basemap, lonlat=TRUE, zoom=zoomLevel-1,
-                              apikey = P(sim)$APIKey)
+                              apikey = myPass)
     }
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
     #### Add basemap ####
@@ -244,7 +248,7 @@ trapsReportPDFopen <- function(sim) {
     } else {
 
       mapGoogle <- gmapAPI(x = extent(posTrapsGoogle), type = P(sim)$basemap, lonlat=TRUE,
-                                      apikey = P(sim)$APIKey)
+                                      apikey = myPass)
     }
     box <- as(raster::extent(mapGoogle), 'SpatialPolygons')
 
@@ -373,7 +377,7 @@ trapsReportPDFopen <- function(sim) {
           options(warn=0)
         } else {
           tempGoogleMap <- gmapAPI(x = extent(tempGoogleROI), type = P(sim)$basemap, lonlat=TRUE, zoom= 13,
-                                       apikey = P(sim)$APIKey)
+                                       apikey = myPass)
         }
         
         

@@ -30,7 +30,7 @@ parameters <- list(loadGMTraps = list(usePlot = TRUE),
                    calculateRisk = list(species = "GypsyMoth",
                                         usePlot = TRUE),
                    combineRisk = list(usePlot = TRUE,
-                                      hiRisk1 = 0.5,
+                                      hiRisk1 = 2,
                                       hiRisk2 = 10,
                                       mapHiRisk = TRUE),#
                    leafletRiskMap = list(basemap = "satellite",
@@ -50,7 +50,8 @@ parameters <- list(loadGMTraps = list(usePlot = TRUE),
                                          basemap = "roadmap",
                                          mapRisk = TRUE,
                                          mapHiRisk = TRUE,
-                                         .pdfInitialTime = 100)
+                                         .pdfInitialTime = 100,
+                                         APIKey = TRUE)
 )
 
 
@@ -70,6 +71,7 @@ clearPlot()
 mySim1 <- spades(mySim, debug=TRUE) 
 
 
+####Tests of ROI######
 # Test where ROI = dataframe
 ROIsub <- data.frame(Region = c("Vancouver_Island", "Lower_Mainland"),#
                                              xmn = c(-2040398, -1942000), #

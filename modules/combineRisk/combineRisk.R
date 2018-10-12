@@ -106,7 +106,7 @@ combineRiskCombine <- function(sim) {
       
       tempRisk <- sim$totalRisk[[i]]
       if (!P(sim)$hiRisk2 < max(values(tempRisk))) {
-        cat(crayon::cyan("The hi risk cut-off is higher than any values found in ", names(sim$dataList[i]), "/n"))
+        cat(crayon::cyan("The hi risk cut-off is higher than any values found in ", names(sim$dataList[i])), '\n')
         highRisk[[i]] <- Cache(raster::reclassify,tempRisk, 
                                             matrix(c(0, P(sim)$hiRisk1, NA, 
                                                      P(sim)$hiRisk1, P(sim)$hiRisk2, 1 ,
